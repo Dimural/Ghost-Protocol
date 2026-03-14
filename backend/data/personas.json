@@ -1,0 +1,57 @@
+[
+  {
+    "id": "ghost_student",
+    "name": "Alex Chen",
+    "age": 22,
+    "city": "Toronto",
+    "country": "Canada",
+    "occupation": "University Student",
+    "income": 1800,
+    "spending_patterns": ["food delivery", "transit", "textbooks", "streaming services"],
+    "typical_max_transaction": 200
+  },
+  {
+    "id": "ghost_professional",
+    "name": "Priya Sharma",
+    "age": 34,
+    "city": "Toronto",
+    "country": "Canada",
+    "occupation": "Software Engineer",
+    "income": 9500,
+    "spending_patterns": ["restaurants", "online shopping", "travel", "gym"],
+    "typical_max_transaction": 2000
+  },
+  {
+    "id": "ghost_retiree",
+    "name": "Harold Williams",
+    "age": 67,
+    "city": "Toronto",
+    "country": "Canada",
+    "occupation": "Retired",
+    "income": 3200,
+    "spending_patterns": ["pharmacy", "groceries", "utilities", "medical"],
+    "typical_max_transaction": 500
+  },
+  {
+    "id": "ghost_business",
+    "name": "Sofia Moreau",
+    "age": 41,
+    "city": "Montreal",
+    "country": "Canada",
+    "occupation": "Small Business Owner",
+    "income": 15000,
+    "spending_patterns": ["B2B suppliers", "equipment", "business travel", "payroll"],
+    "typical_max_transaction": 10000
+  },
+  {
+    "id": "ghost_newcomer",
+    "name": "James Osei",
+    "age": 28,
+    "city": "Mississauga",
+    "country": "Canada",
+    "occupation": "Nurse",
+    "income": 5500,
+    "spending_patterns": ["remittances", "groceries", "transit", "cell phone"],
+    "typical_max_transaction": 1000
+  }
+]
