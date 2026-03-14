@@ -15,6 +15,7 @@ if PROJECT_ROOT not in sys.path:
 from backend.config import FRONTEND_URL
 from backend.routes.criminal import router as criminal_router
 from backend.routes.defender import router as defender_router
+from backend.routes.match import router as match_router
 from backend.routes.websocket import router as websocket_router
 
 app = FastAPI(
@@ -32,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(match_router)
 app.include_router(criminal_router)
 app.include_router(defender_router)
 app.include_router(websocket_router)

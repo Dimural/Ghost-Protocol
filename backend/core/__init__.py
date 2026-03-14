@@ -1,5 +1,6 @@
 # Ghost Protocol — Core Engine (Referee, Scoring, Dispatcher)
 
+from backend.core.blind_spot_detector import BlindSpot, BlindSpotDetector
 from backend.core.match_state import (
     AttackRound,
     AdaptationNotification,
@@ -15,6 +16,8 @@ from backend.core.referee import MatchScore, RefereeEngine, ScoreTransactionResu
 __all__ = [
     "AdaptationNotification",
     "AttackRound",
+    "BlindSpot",
+    "BlindSpotDetector",
     "MATCH_STATE_STORE",
     "MatchScore",
     "MatchState",

@@ -1,41 +1,77 @@
-"""Unit tests for Ghost Protocol referee scoring logic."""
+"""Unit tests for Ghost Protocol referee scoring, persistence, and live events."""
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Literal
 
 import pytest
+from fastapi.testclient import TestClient
 
+from backend.core.blind_spot_detector import BlindSpotDetector
 from backend.core.match_state import MATCH_STATE_STORE
 from backend.core.match_state import MatchState
 from backend.core.referee import RefereeEngine
 from backend.data.models import DefenderDecision
 from backend.data.models import Transaction
 from backend.data.models import TransactionType
+from backend.main import app
+from backend.routes.websocket import MATCH_EVENT_MANAGER, build_match_event_emitter
+
+
+class FakeRedis:
+    def __init__(self) -> None:
+        self.storage: dict[str, str] = {}
+
+    def get(self, key: str) -> str | None:
+        return self.storage.get(key)
+
+    def set(self, key: str, value: str, ex: int | None = None) -> bool:
+        self.storage[key] = value
+        return True
+
+    def delete(self, key: str) -> int:
+        existed = key in self.storage
+        self.storage.pop(key, None)
+        return 1 if existed else 0
 
 
 @pytest.fixture(autouse=True)
 def isolate_match_state_store(tmp_path, monkeypatch):
     monkeypatch.setattr(MATCH_STATE_STORE, "_fallback_path", tmp_path / "matches.json")
     monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", None)
+    MATCH_EVENT_MANAGER.clear()
     MATCH_STATE_STORE.delete("match-score")
     MATCH_STATE_STORE.delete("match-persisted")
+    MATCH_STATE_STORE.delete("match-redis")
+    MATCH_STATE_STORE.delete("match-ws-referee")
 
 
-def _transaction(tx_id: str, amount: float, *, is_fraud: bool) -> Transaction:
+def _transaction(
+    tx_id: str,
+    amount: float,
+    *,
+    is_fraud: bool,
+    timestamp: str | None = None,
+    merchant: str = "Metro",
+    category: str = "groceries",
+    location_city: str = "Toronto",
+    location_country: str = "Canada",
+    fraud_type: str | None = None,
+) -> Transaction:
     return Transaction(
         id=tx_id,
-        timestamp=datetime(2026, 3, 14, 19, 0, 0).isoformat(),
+        timestamp=timestamp or datetime(2026, 3, 14, 19, 0, 0).isoformat(),
         user_id="ghost_student",
         amount=amount,
         currency="CAD",
-        merchant="Metro",
-        category="groceries",
-        location_city="Toronto",
-        location_country="Canada",
+        merchant=merchant,
+        category=category,
+        location_city=location_city,
+        location_country=location_country,
         transaction_type=TransactionType.PURCHASE,
         is_fraud=is_fraud,
-        fraud_type="card_cloning" if is_fraud else None,
+        fraud_type=fraud_type if is_fraud else None,
         notes="Synthetic scoring test transaction.",
     )
 
@@ -154,3 +190,143 @@ async def test_score_transaction_rejects_duplicate_scoring():
 
     with pytest.raises(ValueError, match="already been scored"):
         await engine.score_transaction(first.match_state, transaction, decision)
+
+
+@pytest.mark.asyncio
+async def test_blind_spot_detector_finds_patterns():
+    engine = RefereeEngine()
+    detector = BlindSpotDetector()
+    state = MatchState(match_id="match-score", status="running")
+
+    false_negative_transactions = [
+        _transaction(
+            "fn-1",
+            18.0,
+            is_fraud=True,
+            timestamp=datetime(2026, 3, 14, 1, 5, 0).isoformat(),
+            merchant="Best Buy",
+            category="electronics",
+            location_city="Toronto",
+            location_country="Canada",
+            fraud_type="smurfing",
+        ),
+        _transaction(
+            "fn-2",
+            22.0,
+            is_fraud=True,
+            timestamp=datetime(2026, 3, 14, 1, 35, 0).isoformat(),
+            merchant="Best Buy",
+            category="electronics",
+            location_city="Toronto",
+            location_country="Canada",
+            fraud_type="smurfing",
+        ),
+        _transaction(
+            "fn-3",
+            27.0,
+            is_fraud=True,
+            timestamp=datetime(2026, 3, 14, 2, 10, 0).isoformat(),
+            merchant="Newegg",
+            category="electronics",
+            location_city="Toronto",
+            location_country="Canada",
+            fraud_type="smurfing",
+        ),
+    ]
+    caught_transaction = _transaction(
+        "tp-1",
+        850.0,
+        is_fraud=True,
+        merchant="Apple Store",
+        category="electronics",
+        fraud_type="card_cloning",
+    )
+
+    result = await engine.score_batch(
+        state,
+        [
+            *[(transaction, _decision(transaction.id, "APPROVE")) for transaction in false_negative_transactions],
+            (caught_transaction, _decision(caught_transaction.id, "DENY")),
+        ],
+    )
+
+    blind_spots = detector.detect(result.match_state)
+    blind_spots_by_category = {blind_spot.category: blind_spot for blind_spot in blind_spots}
+
+    assert len(blind_spots) >= 5
+
+    merchant_category_spot = blind_spots_by_category["merchant_category"]
+    assert merchant_category_spot.pattern == "electronics"
+    assert merchant_category_spot.missed_count == 3
+    assert merchant_category_spot.total_amount == 67.0
+    assert merchant_category_spot.example_transaction.id == "fn-1"
+    assert "electronics category" in merchant_category_spot.description
+
+    amount_range_spot = blind_spots_by_category["amount_range"]
+    assert amount_range_spot.pattern == "$10-$49.99"
+
+    time_of_day_spot = blind_spots_by_category["time_of_day"]
+    assert time_of_day_spot.pattern == "12 AM-5:59 AM"
+
+    location_spot = blind_spots_by_category["location"]
+    assert location_spot.pattern == "Toronto, Canada"
+
+    fraud_type_spot = blind_spots_by_category["fraud_type"]
+    assert fraud_type_spot.pattern == "smurfing"
+
+
+def test_match_state_serializes_to_redis(monkeypatch, tmp_path):
+    fake_redis = FakeRedis()
+    monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", fake_redis)
+    monkeypatch.setattr(MATCH_STATE_STORE, "_fallback_path", tmp_path / "matches.json")
+
+    transaction = _transaction("tx-redis", 145.0, is_fraud=True, fraud_type="card_cloning")
+    decision = _decision(transaction.id, "DENY")
+    state = MatchState(
+        match_id="match-redis",
+        status="running",
+        transactions=[transaction],
+        defender_decisions=[decision],
+    )
+
+    MATCH_STATE_STORE.save(state)
+    loaded = MATCH_STATE_STORE.load("match-redis")
+
+    assert "match:match-redis" in fake_redis.storage
+    assert loaded is not None
+    assert loaded.match_id == "match-redis"
+    assert loaded.transactions[0].id == transaction.id
+    assert loaded.defender_decisions[0].transaction_id == decision.transaction_id
+    assert not (tmp_path / "matches.json").exists()
+
+
+def test_websocket_emits_on_transaction_processed():
+    MATCH_STATE_STORE.save(MatchState(match_id="match-ws-referee", status="running"))
+    client = TestClient(app)
+    engine = RefereeEngine()
+    transaction = _transaction("tx-ws-ref", 199.0, is_fraud=True, fraud_type="card_cloning")
+
+    with client.websocket_connect("/ws/match/match-ws-referee") as websocket:
+        assert MATCH_EVENT_MANAGER.connection_count("match-ws-referee") == 1
+
+        asyncio.run(
+            engine.score_transaction_for_match(
+                "match-ws-referee",
+                transaction,
+                _decision(transaction.id, "DENY"),
+                emitter=build_match_event_emitter("match-ws-referee"),
+            )
+        )
+
+        message = websocket.receive_json()
+        assert message["type"] == "TRANSACTION_PROCESSED"
+        assert message["transaction"]["id"] == transaction.id
+        assert message["defender_decision"]["transaction_id"] == transaction.id
+        assert message["defender_decision"]["decision"] == "DENY"
+        assert message["is_correct"] is True
+        assert message["outcome"] == "true_positive"
+        assert message["score"]["true_positives"] == 1
+        assert message["score"]["precision"] == 1.0
+        assert message["score"]["recall"] == 1.0
+
+    assert MATCH_EVENT_MANAGER.connection_count("match-ws-referee") == 0
