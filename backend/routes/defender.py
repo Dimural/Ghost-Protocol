@@ -18,9 +18,10 @@ from typing import Literal
 import httpx
 import redis
 from fastapi import APIRouter, HTTPException
-from pydantic import AnyHttpUrl, BaseModel, Field, ValidationError, model_validator
+from pydantic import AnyHttpUrl, BaseModel, Field, TypeAdapter, ValidationError, model_validator
 
 from backend.config import REDIS_URL
+from backend.core.dispatcher import DispatchErrorEvent, get_defender_errors
 from backend.data.models import DefenderDecision, TransactionType
 
 router = APIRouter(prefix="/api", tags=["defender"])
@@ -28,19 +29,65 @@ router = APIRouter(prefix="/api", tags=["defender"])
 
 class RegisterDefenderRequest(BaseModel):
     match_id: str = Field(min_length=1)
-    webhook_url: AnyHttpUrl | None = None
+    webhook_url: str | None = None
     use_police_ai: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_inputs(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+
+        normalized = dict(data)
+        webhook_url = normalized.get("webhook_url")
+        if isinstance(webhook_url, str):
+            webhook_url = webhook_url.strip() or None
+
+        if normalized.get("use_police_ai") is True:
+            normalized["webhook_url"] = None
+        else:
+            normalized["webhook_url"] = webhook_url
+
+        return normalized
 
     @model_validator(mode="after")
     def validate_webhook_requirement(self) -> "RegisterDefenderRequest":
-        if not self.use_police_ai and self.webhook_url is None:
+        if self.use_police_ai:
+            self.webhook_url = None
+            return self
+
+        if self.webhook_url is None:
             raise ValueError("webhook_url is required when use_police_ai is false.")
+
+        self.webhook_url = str(TypeAdapter(AnyHttpUrl).validate_python(self.webhook_url))
         return self
 
 
 class RegisterDefenderResponse(BaseModel):
     defender_id: str
     status: Literal["registered"] = "registered"
+
+
+class TestDefenderRequest(BaseModel):
+    match_id: str = Field(min_length=1)
+    webhook_url: str
+
+    @model_validator(mode="after")
+    def validate_webhook_url(self) -> "TestDefenderRequest":
+        self.webhook_url = str(TypeAdapter(AnyHttpUrl).validate_python(self.webhook_url.strip()))
+        return self
+
+
+class TestDefenderResponse(BaseModel):
+    status: Literal["reachable", "unreachable"]
+    raw_response: dict | None = None
+    error: str | None = None
+
+
+class DefenderErrorLogResponse(BaseModel):
+    match_id: str
+    error_count: int
+    errors: list[DispatchErrorEvent]
 
 
 class StoredDefenderRegistration(BaseModel):
@@ -176,6 +223,53 @@ async def register_defender(
     _DEFENDER_STORE.save(registration)
 
     return RegisterDefenderResponse(defender_id=registration.defender_id)
+
+
+@router.post("/defender/test", response_model=TestDefenderResponse)
+async def test_defender_webhook(request: TestDefenderRequest) -> TestDefenderResponse:
+    payload = _build_dummy_transaction_payload(request.match_id)
+    timeout = httpx.Timeout(5.0, connect=2.0)
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            response = await client.post(request.webhook_url, json=payload)
+            response.raise_for_status()
+    except httpx.TimeoutException as exc:
+        return TestDefenderResponse(
+            status="unreachable",
+            raw_response=None,
+            error=f"Webhook test timed out after 5 seconds: {exc.__class__.__name__}",
+        )
+    except httpx.HTTPError as exc:
+        return TestDefenderResponse(
+            status="unreachable",
+            raw_response=None,
+            error=f"Webhook request failed: {exc.__class__.__name__}",
+        )
+
+    try:
+        raw_response = response.json()
+    except ValueError:
+        return TestDefenderResponse(
+            status="reachable",
+            raw_response={"text": response.text},
+            error=None,
+        )
+
+    if isinstance(raw_response, dict):
+        return TestDefenderResponse(status="reachable", raw_response=raw_response, error=None)
+
+    return TestDefenderResponse(
+        status="reachable",
+        raw_response={"response": raw_response},
+        error=None,
+    )
+
+
+@router.get("/defender/{match_id}/errors", response_model=DefenderErrorLogResponse)
+async def get_defender_error_log(match_id: str) -> DefenderErrorLogResponse:
+    errors = get_defender_errors(match_id)
+    return DefenderErrorLogResponse(match_id=match_id, error_count=len(errors), errors=errors)
 
 
 async def _probe_defender_webhook(

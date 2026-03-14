@@ -1,6 +1,7 @@
-"""Unit tests for Ghost Protocol defender registration."""
+"""Unit tests for the Ghost Protocol defender interface."""
 from __future__ import annotations
 
+import json
 from datetime import datetime
 
 import httpx
@@ -9,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from backend.agents.police_agent import PoliceAgent
+from backend.core.dispatcher import _ERROR_STORE, clear_defender_errors
 from backend.core.dispatcher import WebhookDispatcher
 from backend.data.models import DefenderDecision
 from backend.data.models import Transaction, TransactionType
@@ -20,6 +22,15 @@ from backend.routes.defender import WebhookProbeError, _DEFENDER_STORE
 def isolate_defender_store(tmp_path, monkeypatch):
     monkeypatch.setattr(_DEFENDER_STORE, "_fallback_path", tmp_path / "defenders.json")
     monkeypatch.setattr(_DEFENDER_STORE, "_redis_client", None)
+    monkeypatch.setattr(_ERROR_STORE, "_fallback_path", tmp_path / "defender-errors.json")
+    monkeypatch.setattr(_ERROR_STORE, "_redis_client", None)
+    clear_defender_errors("match-123")
+    clear_defender_errors("match-124")
+    clear_defender_errors("match-125")
+    clear_defender_errors("match-police")
+    clear_defender_errors("match-errors")
+    clear_defender_errors("match-timeout")
+    clear_defender_errors("match-parse")
 
 
 @pytest.fixture
@@ -134,6 +145,64 @@ def test_register_defender_supports_police_ai_without_webhook():
     assert registration.last_test_decision is None
 
 
+def test_register_defender_supports_police_ai_with_empty_webhook_url():
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/defender/register",
+        json={"match_id": "match-police", "webhook_url": "", "use_police_ai": True},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "registered"
+
+    registration = _DEFENDER_STORE.load("match-police")
+    assert registration is not None
+    assert registration.mode == "police_ai"
+    assert registration.webhook_url is None
+
+
+def test_defender_test_endpoint_returns_raw_response(monkeypatch):
+    class FakeResponse:
+        def __init__(self, payload: dict):
+            self._payload = payload
+            self.text = json.dumps(payload)
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self._payload
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, json: dict[str, object]):
+            return FakeResponse({"url": url, "json": json})
+
+    monkeypatch.setattr("backend.routes.defender.httpx.AsyncClient", FakeAsyncClient)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/defender/test",
+        json={"match_id": "match-test", "webhook_url": "http://httpbin.org/post"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "reachable"
+    assert payload["error"] is None
+    assert payload["raw_response"]["url"] == "http://httpbin.org/post"
+    assert payload["raw_response"]["json"]["transaction_id"].startswith("defender-test-")
+
+
 @pytest.mark.asyncio
 async def test_dispatch_sends_transaction_without_is_fraud_field(sample_transaction):
     captured_payload: dict[str, object] = {}
@@ -177,12 +246,16 @@ async def test_dispatch_handles_timeout(monkeypatch, sample_transaction):
         transaction=sample_transaction,
         defender_url="http://localhost:9000/score",
         timeout_seconds=5,
+        match_id="match-timeout",
     )
 
     assert decision.decision == "APPROVE"
     assert decision.confidence == 0.0
     assert "Timeout:" in decision.reason
     assert dispatcher.error_events[-1].error_type == "timeout"
+    assert dispatcher.error_events[-1].error_label == "Timeout"
+    assert dispatcher.error_events[-1].counts_as_missed_fraud is True
+    assert dispatcher.error_events[-1].referee_outcome == "false_negative"
 
 
 @pytest.mark.asyncio
@@ -203,11 +276,71 @@ async def test_dispatch_handles_http_error_without_crashing(monkeypatch, sample_
     decision = await dispatcher.dispatch(
         transaction=sample_transaction,
         defender_url="http://localhost:9000/score",
+        match_id="match-errors",
     )
 
     assert decision.decision == "APPROVE"
     assert "HTTP 500" in decision.reason
     assert dispatcher.error_events[-1].error_type == "http_error"
+    assert dispatcher.error_events[-1].error_label == "Defender Error"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_handles_parse_error_and_logs_for_war_room(sample_transaction, monkeypatch):
+    dispatcher = WebhookDispatcher()
+
+    request = httpx.Request("POST", "http://localhost:9000/score")
+    malformed_response = httpx.Response(200, request=request, content=b"not-json")
+
+    async def malformed(
+        _defender_url: str,
+        _payload: dict[str, object],
+        _timeout_seconds: int,
+    ):
+        return malformed_response
+
+    monkeypatch.setattr(dispatcher, "_post_json", malformed)
+
+    decision = await dispatcher.dispatch(
+        transaction=sample_transaction,
+        defender_url="http://localhost:9000/score",
+        match_id="match-parse",
+    )
+
+    assert decision.decision == "APPROVE"
+    assert decision.reason is not None
+    assert decision.reason.startswith("Parse Error:")
+    assert dispatcher.error_events[-1].error_label == "Parse Error"
+    assert dispatcher.error_events[-1].war_room_visible is True
+
+
+def test_defender_error_log_endpoint_returns_logged_events(sample_transaction, monkeypatch):
+    async def timed_out(_defender_url: str, _payload: dict[str, object], _timeout_seconds: int):
+        raise httpx.ReadTimeout("defender timed out")
+
+    dispatcher = WebhookDispatcher()
+    monkeypatch.setattr(dispatcher, "_post_json", timed_out)
+
+    import asyncio
+
+    asyncio.run(
+        dispatcher.dispatch(
+            transaction=sample_transaction,
+            defender_url="http://localhost:9000/score",
+            timeout_seconds=5,
+            match_id="match-errors",
+        )
+    )
+
+    client = TestClient(app)
+    response = client.get("/api/defender/match-errors/errors")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["match_id"] == "match-errors"
+    assert payload["error_count"] == 1
+    assert payload["errors"][0]["error_label"] == "Timeout"
+    assert payload["errors"][0]["war_room_visible"] is True
 
 
 @pytest.mark.asyncio
