@@ -24,6 +24,7 @@ from backend.core.match_state import (
 )
 from backend.data.generator import load_personas
 from backend.data.models import Transaction
+from backend.routes.websocket import emit_attacker_adapting
 
 router = APIRouter(prefix="/api/attack", tags=["criminal"])
 
@@ -211,6 +212,7 @@ async def adapt_attack(request: AdaptAttackRequest) -> AdaptAttackResponse:
         }
     )
     MATCH_STATE_STORE.save(updated_state)
+    await emit_attacker_adapting(request.match_id, notification)
 
     return AdaptAttackResponse(
         new_attacks=new_attacks,

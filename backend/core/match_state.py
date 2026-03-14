@@ -17,6 +17,7 @@ import redis
 from pydantic import BaseModel, Field
 
 from backend.config import REDIS_URL
+from backend.core.referee import MatchScore
 from backend.data.models import DefenderDecision, Transaction
 
 MatchStatus = Literal["setup", "running", "paused", "complete"]
@@ -36,17 +37,6 @@ class AdaptationNotification(BaseModel):
     reasoning: str
     banner_message: str
     created_at: str = Field(default_factory=utc_now)
-
-
-class MatchScore(BaseModel):
-    """Score snapshot stored in match state before the Referee is implemented."""
-
-    true_positives: int = 0
-    false_positives: int = 0
-    false_negatives: int = 0
-    true_negatives: int = 0
-    money_lost: float = 0.0
-    money_blocked_legitimately: float = 0.0
 
 
 class AttackRound(BaseModel):
