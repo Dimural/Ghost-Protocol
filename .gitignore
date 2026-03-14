@@ -1,0 +1,39 @@
+# Environment variables
+.env
+GHOST_PROTOCOL_PRD.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+frontend/.next/
+frontend/node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Redis dump
+dump.rdb
+
+# Generated data (keep transactions.json and demo_scenario.json)
+# backend/data/transactions.json  ← intentionally committed per PRD
