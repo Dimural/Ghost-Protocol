@@ -14,6 +14,7 @@ if PROJECT_ROOT not in sys.path:
 
 from backend.config import FRONTEND_URL
 from backend.routes.criminal import router as criminal_router
+from backend.routes.defender import router as defender_router
 
 app = FastAPI(
     title="Ghost Protocol",
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(criminal_router)
+app.include_router(defender_router)
 
 
 @app.get("/")

@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -337,7 +337,7 @@ def _stable_default_persona_id(match_id: str) -> str:
 
 
 def _timestamp() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _runtime_mode() -> Literal["mock", "gemini"]:

@@ -3,7 +3,7 @@ Ghost Protocol — Pydantic Data Models
 Defines the core data structures used throughout the application.
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Literal, Optional
 from enum import Enum
 import uuid
 from datetime import datetime
@@ -35,8 +35,8 @@ class Transaction(BaseModel):
 
 class DefenderDecision(BaseModel):
     """A Defender's response to a single transaction."""
-    transaction_id: str
-    decision: str  # "APPROVE" or "DENY"
+    transaction_id: str = Field(min_length=1)
+    decision: Literal["APPROVE", "DENY"]
     confidence: float = Field(ge=0.0, le=1.0)
     reason: Optional[str] = None
 
