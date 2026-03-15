@@ -26,10 +26,11 @@ import {
 import type {
   DefenderDecisionPayload,
   OutcomeLabel,
+  SocketConnectionState,
   TransactionPayload,
 } from "@/lib/websocket";
 
-export type FeedConnectionState = "connecting" | "live" | "offline";
+export type FeedConnectionState = SocketConnectionState;
 
 export type TransactionFeedItem = {
   id: string;

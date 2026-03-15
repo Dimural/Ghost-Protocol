@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowRight,
   BrainCircuit,
+  Copy,
+  ExternalLink,
   Radar,
+  Share2,
   ShieldCheck,
   Siren,
   Swords,
@@ -24,6 +28,11 @@ import {
 } from "@/lib/api";
 import { getBackendBaseUrl } from "@/lib/config";
 import {
+  copyTextToClipboard,
+  rememberOwnedMatch,
+  resolveAbsoluteShareUrl,
+} from "@/lib/match-access";
+import {
   DEFAULT_SCENARIO_ID,
   SCENARIOS,
   type ScenarioDefinition,
@@ -34,6 +43,7 @@ type DefenderMode = "police_ai" | "webhook";
 type LaunchSummary = {
   matchId: string;
   shareUrl: string;
+  absoluteShareUrl: string;
   status: string;
   defenderMode: DefenderMode;
   defenderId: string;
@@ -91,6 +101,9 @@ export default function Home() {
   const [launchSummary, setLaunchSummary] = useState<LaunchSummary | null>(
     null,
   );
+  const [shareCopyState, setShareCopyState] = useState<
+    "idle" | "copied" | "failed"
+  >("idle");
 
   const selectedScenario =
     SCENARIOS.find((scenario) => scenario.id === selectedScenarioId) ??
@@ -103,12 +116,14 @@ export default function Home() {
     setSelectedScenarioId(scenarioId);
     setLaunchError(null);
     setLaunchSummary(null);
+    setShareCopyState("idle");
   }
 
   function handleModeChange(mode: DefenderMode) {
     setDefenderMode(mode);
     setLaunchError(null);
     setLaunchSummary(null);
+    setShareCopyState("idle");
     setConnectionStatus(mode === "police_ai" ? READY_STATUS : AWAITING_WEBHOOK_STATUS);
   }
 
@@ -116,6 +131,7 @@ export default function Home() {
     setWebhookUrl(value);
     setLaunchError(null);
     setLaunchSummary(null);
+    setShareCopyState("idle");
     if (defenderMode === "webhook") {
       setConnectionStatus(
         value.trim().length > 0
@@ -188,6 +204,7 @@ export default function Home() {
     setIsLaunching(true);
     setLaunchError(null);
     setLaunchSummary(null);
+    setShareCopyState("idle");
 
     try {
       const createdMatch = await createMatch({
@@ -204,10 +221,13 @@ export default function Home() {
       });
 
       const startedMatch = await startMatch(createdMatch.match_id);
+      const absoluteShareUrl = resolveAbsoluteShareUrl(createdMatch.share_url);
+      rememberOwnedMatch(createdMatch.match_id);
 
       setLaunchSummary({
         matchId: createdMatch.match_id,
         shareUrl: createdMatch.share_url,
+        absoluteShareUrl,
         status: startedMatch.status,
         defenderMode,
         defenderId: defenderRegistration.defender_id,
@@ -217,6 +237,15 @@ export default function Home() {
     } finally {
       setIsLaunching(false);
     }
+  }
+
+  async function handleCopyShareLink() {
+    if (!launchSummary) {
+      return;
+    }
+
+    const copied = await copyTextToClipboard(launchSummary.absoluteShareUrl);
+    setShareCopyState(copied ? "copied" : "failed");
   }
 
   return (
@@ -417,6 +446,11 @@ export default function Home() {
                     </div>
                   </div>
 
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50">
+                    <Share2 className="h-3.5 w-3.5" />
+                    This browser is the owner view
+                  </div>
+
                   <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
                       <dt className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">
@@ -447,10 +481,38 @@ export default function Home() {
                         Share URL
                       </dt>
                       <dd className="mt-2 break-all font-mono text-sm text-emerald-50">
-                        {launchSummary.shareUrl}
+                        {launchSummary.absoluteShareUrl}
                       </dd>
                     </div>
                   </dl>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCopyShareLink}
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-4 py-2 text-sm font-medium text-emerald-50 transition hover:bg-emerald-300/15"
+                    >
+                      <Copy className="h-4 w-4" />
+                      {shareCopyState === "copied"
+                        ? "Share link copied"
+                        : shareCopyState === "failed"
+                          ? "Copy failed"
+                          : "Copy share link"}
+                    </button>
+
+                    <Link
+                      href={launchSummary.shareUrl}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50 transition hover:bg-white/15"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open War Room
+                    </Link>
+                  </div>
+
+                  <p className="mt-4 text-sm leading-6 text-emerald-50/80">
+                    Anyone opening this share link from a different browser or
+                    device gets a read-only match view.
+                  </p>
                 </div>
               ) : null}
             </section>

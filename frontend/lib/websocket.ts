@@ -1,5 +1,7 @@
 import { getMatchWebSocketUrl } from "@/lib/config";
 
+export type SocketConnectionState = "connecting" | "live" | "offline";
+
 export type OutcomeLabel =
   | "true_positive"
   | "false_positive"
@@ -82,6 +84,14 @@ type SocketCloseListener = (event: CloseEvent) => void;
 export class MatchWebSocket {
   private socket: WebSocket | null = null;
 
+  private reconnectTimer: number | null = null;
+
+  private reconnectAttempts = 0;
+
+  private matchId: string | null = null;
+
+  private shouldReconnect = false;
+
   private transactionProcessedListeners =
     new Set<TransactionProcessedListener>();
 
@@ -101,28 +111,17 @@ export class MatchWebSocket {
     }
 
     this.disconnect();
-
-    const socket = new WebSocket(getMatchWebSocketUrl(matchId));
-    socket.addEventListener("open", (event) => {
-      this.emitSocketEvent(this.openListeners, event);
-    });
-    socket.addEventListener("error", (event) => {
-      this.emitSocketEvent(this.errorListeners, event);
-    });
-    socket.addEventListener("close", (event) => {
-      if (this.socket === socket) {
-        this.socket = null;
-      }
-      this.emitSocketClose(event);
-    });
-    socket.addEventListener("message", (event) => {
-      this.handleMessage(event.data);
-    });
-
-    this.socket = socket;
+    this.matchId = matchId;
+    this.shouldReconnect = true;
+    this.reconnectAttempts = 0;
+    this.openSocket();
   }
 
   disconnect(): void {
+    this.shouldReconnect = false;
+    this.matchId = null;
+    this.clearReconnectTimer();
+
     if (!this.socket) {
       return;
     }
@@ -162,8 +161,60 @@ export class MatchWebSocket {
     return () => this.closeListeners.delete(cb);
   }
 
+  private openSocket(): void {
+    if (!this.matchId) {
+      return;
+    }
+
+    this.clearReconnectTimer();
+
+    const socket = new WebSocket(getMatchWebSocketUrl(this.matchId));
+    socket.addEventListener("open", (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
+      this.reconnectAttempts = 0;
+      this.emitSocketEvent(this.openListeners, event);
+    });
+    socket.addEventListener("error", (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
+      this.emitSocketEvent(this.errorListeners, event);
+    });
+    socket.addEventListener("close", (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
+      this.socket = null;
+      this.emitSocketClose(event);
+
+      if (this.shouldReconnect && this.matchId && event.code !== 4404) {
+        this.scheduleReconnect();
+      }
+    });
+    socket.addEventListener("message", (event) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
+      this.handleMessage(event.data);
+    });
+
+    this.socket = socket;
+  }
+
   private handleMessage(rawPayload: string): void {
-    const payload = JSON.parse(rawPayload) as MatchSocketMessage;
+    let payload: MatchSocketMessage;
+    try {
+      payload = JSON.parse(rawPayload) as MatchSocketMessage;
+    } catch {
+      this.emitSocketEvent(this.errorListeners, new Event("error"));
+      return;
+    }
 
     switch (payload.type) {
       case "TRANSACTION_PROCESSED":
@@ -182,6 +233,33 @@ export class MatchWebSocket {
       default:
         return;
     }
+  }
+
+  private scheduleReconnect(): void {
+    if (typeof window === "undefined" || this.reconnectTimer !== null) {
+      return;
+    }
+
+    const delayMs = Math.min(4000, 500 * 2 ** this.reconnectAttempts);
+    this.reconnectAttempts += 1;
+    this.reconnectTimer = window.setTimeout(() => {
+      this.reconnectTimer = null;
+
+      if (!this.shouldReconnect || !this.matchId || this.socket) {
+        return;
+      }
+
+      this.openSocket();
+    }, delayMs);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer === null || typeof window === "undefined") {
+      return;
+    }
+
+    window.clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
   }
 
   private emitSocketEvent(

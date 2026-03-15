@@ -124,6 +124,45 @@ body::before {
   }
 }
 
+@keyframes adaptation-banner-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes adaptation-banner-glow {
+  0% {
+    box-shadow: 0 0 0 rgba(250, 204, 21, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.28),
+      0 0 42px rgba(255, 59, 59, 0.18),
+      0 0 72px rgba(0, 212, 255, 0.12);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(250, 204, 21, 0.08);
+  }
+}
+
+@keyframes adaptation-banner-scan {
+  0% {
+    transform: translateX(0) skewX(-18deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.28;
+  }
+  100% {
+    transform: translateX(520%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -145,6 +184,18 @@ a {
 
 .map-route-draw {
   animation: map-route-draw 1s ease-out forwards;
+}
+
+.adaptation-banner-enter {
+  animation: adaptation-banner-enter 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.adaptation-banner-glow {
+  animation: adaptation-banner-glow 2.8s ease-in-out infinite;
+}
+
+.adaptation-banner-scan {
+  animation: adaptation-banner-scan 2.4s linear infinite;
 }
 
 button,

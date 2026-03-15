@@ -66,6 +66,16 @@ export type MatchStateSummary = {
   total_rounds?: number;
 };
 
+export type AttackRoundResponse = {
+  round: number;
+  attacks: TransactionPayload[];
+  caught_ids: string[];
+  strategy_notes?: string | null;
+  adaptation_reasoning?: string | null;
+  notification?: AttackerAdaptingMessage | null;
+  created_at: string;
+};
+
 export type MatchStateResponse = {
   match_id: string;
   scenario_name: string;
@@ -75,6 +85,7 @@ export type MatchStateResponse = {
   transactions: TransactionPayload[];
   defender_decisions: DefenderDecisionPayload[];
   score: MatchScorePayload;
+  attack_rounds: AttackRoundResponse[];
   started_at: string;
   ended_at?: string | null;
   share_url?: string | null;

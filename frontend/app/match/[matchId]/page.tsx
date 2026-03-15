@@ -2,20 +2,35 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Lock,
+  ShieldAlert,
+} from "lucide-react";
 
+import { AdaptationBanner } from "@/components/AdaptationBanner";
 import { RiskMeter } from "@/components/RiskMeter";
 import { Scoreboard } from "@/components/Scoreboard";
 import {
-  type FeedConnectionState,
   TransactionFeed,
   type TransactionFeedItem,
 } from "@/components/TransactionFeed";
 import { TransactionMap } from "@/components/TransactionMap";
 import { getErrorMessage, getMatch, type MatchStateResponse } from "@/lib/api";
 import {
+  copyTextToClipboard,
+  getMatchViewMode,
+  resolveAbsoluteShareUrl,
+  type MatchViewMode,
+} from "@/lib/match-access";
+import {
+  type AttackerAdaptingMessage,
   MatchWebSocket,
   type OutcomeLabel,
+  type SocketConnectionState,
   type TransactionProcessedMessage,
 } from "@/lib/websocket";
 
@@ -118,10 +133,20 @@ export default function MatchPage({ params }: MatchPageProps) {
   const [processedCount, setProcessedCount] = useState(0);
   const [processedFraudCount, setProcessedFraudCount] = useState(0);
   const [connectionState, setConnectionState] =
-    useState<FeedConnectionState>("connecting");
+    useState<SocketConnectionState>("connecting");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeBanner, setActiveBanner] =
+    useState<AttackerAdaptingMessage | null>(null);
+  const [viewMode, setViewMode] = useState<MatchViewMode>("shared");
+  const [shareCopyState, setShareCopyState] = useState<
+    "idle" | "copied" | "failed"
+  >("idle");
   const seenTransactionIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    setViewMode(getMatchViewMode(matchId));
+  }, [matchId]);
 
   useEffect(() => {
     let isActive = true;
@@ -144,6 +169,7 @@ export default function MatchPage({ params }: MatchPageProps) {
         setFeedEntries(nextFeedEntries);
         setProcessedCount(nextMatch.defender_decisions.length);
         setProcessedFraudCount(countProcessedFraudTransactions(nextMatch));
+        setActiveBanner(nextMatch.latest_notification || null);
       } catch (error) {
         if (!isActive) {
           return;
@@ -177,11 +203,11 @@ export default function MatchPage({ params }: MatchPageProps) {
     });
 
     const unsubscribeError = socket.onError(() => {
-      setConnectionState("offline");
+      setConnectionState("connecting");
     });
 
-    const unsubscribeClose = socket.onClose(() => {
-      setConnectionState("offline");
+    const unsubscribeClose = socket.onClose((event) => {
+      setConnectionState(event.code === 4404 ? "offline" : "connecting");
     });
 
     const unsubscribeProcessed = socket.onTransactionProcessed((event) => {
@@ -222,6 +248,7 @@ export default function MatchPage({ params }: MatchPageProps) {
     });
 
     const unsubscribeAdapting = socket.onAttackerAdapting((event) => {
+      setActiveBanner(event);
       setMatch((currentMatch) =>
         currentMatch
           ? {
@@ -259,6 +286,17 @@ export default function MatchPage({ params }: MatchPageProps) {
       socket.disconnect();
     };
   }, [errorMessage, matchId]);
+
+  async function handleCopyShareLink() {
+    if (!match?.share_url) {
+      return;
+    }
+
+    const copied = await copyTextToClipboard(
+      resolveAbsoluteShareUrl(match.share_url),
+    );
+    setShareCopyState(copied ? "copied" : "failed");
+  }
 
   if (isLoading) {
     return (
@@ -298,47 +336,120 @@ export default function MatchPage({ params }: MatchPageProps) {
   }
 
   const displayRound = resolveDisplayRound(match, processedCount);
+  const absoluteShareUrl = match.share_url
+    ? resolveAbsoluteShareUrl(match.share_url)
+    : null;
+  const isOwnerView = viewMode === "owner";
 
   return (
     <main className="px-6 py-8 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to setup
+              </Link>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  href={`/replay/${matchId}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-300/15"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Heist Replay
+                </Link>
+                {absoluteShareUrl ? (
+                  <button
+                    type="button"
+                    onClick={handleCopyShareLink}
+                    className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                  >
+                    <Copy className="h-4 w-4" />
+                    {shareCopyState === "copied"
+                      ? "Share link copied"
+                      : shareCopyState === "failed"
+                        ? "Copy failed"
+                        : "Copy share link"}
+                  </button>
+                ) : null}
+              </div>
+              <p className="mt-5 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
+                War Room
+              </p>
+              <h1 className="mt-2 text-4xl font-semibold text-slate-50">
+                {match.scenario_name}
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                Match <span className="font-mono text-slate-200">{matchId}</span>{" "}
+                is live in the War Room with the transaction feed, threat gauge,
+                scoreboard, world map, and attacker-learning banner all driven
+                from the same websocket event stream.
+              </p>
+              <div
+                className={`mt-5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${
+                  isOwnerView
+                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                    : "border-amber-300/20 bg-amber-300/10 text-amber-100"
+                }`}
+              >
+                {isOwnerView ? (
+                  <KeyRound className="h-3.5 w-3.5" />
+                ) : (
+                  <Lock className="h-3.5 w-3.5" />
+                )}
+                {isOwnerView ? "Owner view" : "Shared read-only view"}
+              </div>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                {isOwnerView
+                  ? "This browser launched the match, so it is treated as the owner view."
+                  : "This browser did not launch the match. The dashboard remains view-only and safe to share."}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                  Match Status
+                </p>
+                <p className="mt-2 text-xl font-semibold capitalize text-slate-50">
+                  {match.status}
+                </p>
+              </div>
+              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                  WebSocket
+                </p>
+                <p className="mt-2 text-xl font-semibold capitalize text-slate-50">
+                  {connectionState}
+                </p>
+              </div>
+              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                  View Mode
+                </p>
+                <p className="mt-2 text-xl font-semibold text-slate-50">
+                  {isOwnerView ? "Owner" : "Read-only"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {activeBanner ? (
+          <AdaptationBanner
+            key={`${activeBanner.round}-${activeBanner.created_at}`}
+            notification={activeBanner}
+            connectionState={connectionState}
+            onDismiss={() => setActiveBanner(null)}
+          />
+        ) : null}
+
         <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr]">
           <div className="space-y-8">
-            <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to setup
-                  </Link>
-                  <p className="mt-5 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                    War Room
-                  </p>
-                  <h1 className="mt-2 text-4xl font-semibold text-slate-50">
-                    {match.scenario_name}
-                  </h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-                    Match <span className="font-mono text-slate-200">{matchId}</span>{" "}
-                    is live in the War Room with the transaction feed, threat
-                    gauge, scoreboard, and world map all updating from the same
-                    referee event stream.
-                  </p>
-                </div>
-
-                <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Status
-                  </p>
-                  <p className="mt-2 text-xl font-semibold capitalize text-slate-50">
-                    {match.status}
-                  </p>
-                </div>
-              </div>
-            </section>
-
             <TransactionFeed
               entries={feedEntries}
               processedCount={processedCount}
