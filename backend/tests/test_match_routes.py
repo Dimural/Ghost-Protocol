@@ -6,14 +6,26 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 import pytest
 
+from backend.core.dispatcher import _ERROR_STORE
 from backend.core.match_state import MATCH_STATE_STORE, MatchState
 from backend.main import app
+from backend.routes.defender import _DEFENDER_STORE
+from backend.core.orchestrator import MATCH_ORCHESTRATOR
 
 
 @pytest.fixture(autouse=True)
 def isolate_match_state_store(tmp_path, monkeypatch):
     monkeypatch.setattr(MATCH_STATE_STORE, "_fallback_path", tmp_path / "matches.json")
     monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", None)
+    monkeypatch.setattr(_DEFENDER_STORE, "_fallback_path", tmp_path / "defenders.json")
+    monkeypatch.setattr(_DEFENDER_STORE, "_redis_client", None)
+    monkeypatch.setattr(_ERROR_STORE, "_fallback_path", tmp_path / "defender-errors.json")
+    monkeypatch.setattr(_ERROR_STORE, "_redis_client", None)
+
+    async def no_op_run_match(match_id: str) -> None:
+        return None
+
+    monkeypatch.setattr(MATCH_ORCHESTRATOR, "run_match", no_op_run_match)
 
 
 def test_create_start_and_get_match_routes():
@@ -32,6 +44,12 @@ def test_create_start_and_get_match_routes():
 
     assert create_payload["status"] == "setup"
     assert create_payload["share_url"] == f"/match/{create_payload['match_id']}"
+
+    register_response = client.post(
+        "/api/defender/register",
+        json={"match_id": create_payload["match_id"], "use_police_ai": True},
+    )
+    assert register_response.status_code == 200
 
     start_response = client.post(f"/api/match/{create_payload['match_id']}/start")
     assert start_response.status_code == 200
@@ -106,6 +124,36 @@ def test_match_routes_return_404_for_missing_match():
 
     reset_response = client.post("/api/match/missing-match/reset")
     assert reset_response.status_code == 404
+
+
+def test_start_route_schedules_background_orchestrator(monkeypatch):
+    client = TestClient(app)
+    scheduled_match_ids: list[str] = []
+
+    async def fake_run_match(match_id: str) -> None:
+        scheduled_match_ids.append(match_id)
+
+    monkeypatch.setattr(MATCH_ORCHESTRATOR, "run_match", fake_run_match)
+
+    create_response = client.post(
+        "/api/match/create",
+        json={
+            "scenario_name": "Test Run",
+            "criminal_persona": "amateur",
+            "total_rounds": 2,
+        },
+    )
+    match_id = create_response.json()["match_id"]
+
+    register_response = client.post(
+        "/api/defender/register",
+        json={"match_id": match_id, "use_police_ai": True},
+    )
+    assert register_response.status_code == 200
+
+    start_response = client.post(f"/api/match/{match_id}/start")
+    assert start_response.status_code == 200
+    assert scheduled_match_ids == [match_id]
 
 
 def test_expired_matches_are_read_only_but_still_viewable():

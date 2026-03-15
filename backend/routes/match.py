@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.core.dispatcher import clear_defender_errors
 from backend.core.match_state import (
     MATCH_STATE_STORE,
     MatchState,
@@ -18,6 +19,7 @@ from backend.core.match_state import (
     is_match_expired,
     utc_now,
 )
+from backend.core.orchestrator import MATCH_ORCHESTRATOR
 from backend.core.referee import MatchScore
 
 router = APIRouter(prefix="/api/match", tags=["match"])
@@ -92,8 +94,29 @@ async def get_match(match_id: str) -> MatchState:
 
 
 @router.post("/{match_id}/start", response_model=MatchState)
-async def start_match(match_id: str) -> MatchState:
+async def start_match(match_id: str, background_tasks: BackgroundTasks) -> MatchState:
     state = _require_modifiable_match(match_id)
+    if state.defender_mode is None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Match '{match_id}' does not have a registered defender yet. "
+                "Register a webhook or Police AI before starting the simulation."
+            ),
+        )
+    if state.status == "running":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Match '{match_id}' is already running.",
+        )
+    if state.status == "complete":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Match '{match_id}' has already completed. Reset the match before starting it again."
+            ),
+        )
+
     timestamp = utc_now()
     updated_state = state.model_copy(
         update={
@@ -103,7 +126,9 @@ async def start_match(match_id: str) -> MatchState:
             "updated_at": timestamp,
         }
     )
+    clear_defender_errors(match_id)
     MATCH_STATE_STORE.save(updated_state)
+    background_tasks.add_task(MATCH_ORCHESTRATOR.run_match, match_id)
     return updated_state
 
 
@@ -138,5 +163,6 @@ async def reset_match(match_id: str) -> MatchState:
             "updated_at": timestamp,
         }
     )
+    clear_defender_errors(match_id)
     MATCH_STATE_STORE.save(updated_state)
     return updated_state

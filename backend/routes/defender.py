@@ -397,3 +397,7 @@ def _sync_match_defender_registration(
             }
         )
     )
+
+
+def get_defender_registration(match_id: str) -> StoredDefenderRegistration | None:
+    return _DEFENDER_STORE.load(match_id)
