@@ -2,20 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-  Activity,
-  ArrowLeft,
-  RadioTower,
-  Shield,
-  ShieldAlert,
-} from "lucide-react";
+import { ArrowLeft, ShieldAlert } from "lucide-react";
 
 import { RiskMeter } from "@/components/RiskMeter";
+import { Scoreboard } from "@/components/Scoreboard";
 import {
   type FeedConnectionState,
   TransactionFeed,
   type TransactionFeedItem,
 } from "@/components/TransactionFeed";
+import { TransactionMap } from "@/components/TransactionMap";
 import { getErrorMessage, getMatch, type MatchStateResponse } from "@/lib/api";
 import {
   MatchWebSocket,
@@ -89,17 +85,6 @@ function buildHistoricalFeed(match: MatchStateResponse): TransactionFeedItem[] {
     .slice(0, 50);
 }
 
-function formatPersona(persona: string | null | undefined): string {
-  if (!persona) {
-    return "Unassigned";
-  }
-
-  return persona
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function countProcessedFraudTransactions(match: MatchStateResponse): number {
   const transactionsById = new Map(
     match.transactions.map((transaction) => [transaction.id, transaction]),
@@ -109,6 +94,21 @@ function countProcessedFraudTransactions(match: MatchStateResponse): number {
     const transaction = transactionsById.get(decision.transaction_id);
     return transaction?.is_fraud ? count + 1 : count;
   }, 0);
+}
+
+function resolveDisplayRound(
+  match: MatchStateResponse,
+  processedCount: number,
+): number {
+  if (match.status === "complete") {
+    return Math.max(match.current_round, match.total_rounds);
+  }
+
+  if (match.current_round === 0 && processedCount > 0) {
+    return 1;
+  }
+
+  return match.current_round;
 }
 
 export default function MatchPage({ params }: MatchPageProps) {
@@ -213,7 +213,22 @@ export default function MatchPage({ params }: MatchPageProps) {
               )
                 ? currentMatch.defender_decisions
                 : [...currentMatch.defender_decisions, event.defender_decision],
+              current_round:
+                currentMatch.current_round === 0 ? 1 : currentMatch.current_round,
               score: event.score,
+            }
+          : currentMatch,
+      );
+    });
+
+    const unsubscribeAdapting = socket.onAttackerAdapting((event) => {
+      setMatch((currentMatch) =>
+        currentMatch
+          ? {
+              ...currentMatch,
+              current_round: event.round,
+              latest_notification: event,
+              status: "running",
             }
           : currentMatch,
       );
@@ -225,6 +240,7 @@ export default function MatchPage({ params }: MatchPageProps) {
           ? {
               ...currentMatch,
               status: "complete",
+              current_round: currentMatch.total_rounds,
               score: event.final_score,
             }
           : currentMatch,
@@ -238,6 +254,7 @@ export default function MatchPage({ params }: MatchPageProps) {
       unsubscribeError();
       unsubscribeClose();
       unsubscribeProcessed();
+      unsubscribeAdapting();
       unsubscribeMatchComplete();
       socket.disconnect();
     };
@@ -280,6 +297,8 @@ export default function MatchPage({ params }: MatchPageProps) {
     );
   }
 
+  const displayRound = resolveDisplayRound(match, processedCount);
+
   return (
     <main className="px-6 py-8 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
@@ -303,9 +322,9 @@ export default function MatchPage({ params }: MatchPageProps) {
                   </h1>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
                     Match <span className="font-mono text-slate-200">{matchId}</span>{" "}
-                    is streaming into the left-panel feed, and the right-side
-                    threat gauge is now sampling missed fraud in real time.
-                    Upcoming tasks will add the map and scoreboard layers.
+                    is live in the War Room with the transaction feed, threat
+                    gauge, scoreboard, and world map all updating from the same
+                    referee event stream.
                   </p>
                 </div>
 
@@ -334,95 +353,14 @@ export default function MatchPage({ params }: MatchPageProps) {
               falseNegatives={match.score.false_negatives}
             />
 
-            <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.84)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                    Match Summary
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-50">
-                    Current telemetry
-                  </h2>
-                </div>
-                <div className="rounded-full border border-cyan-300/20 bg-cyan-400/10 p-3 text-cyan-100">
-                  <Activity className="h-5 w-5" />
-                </div>
-              </div>
+            <Scoreboard
+              score={match.score}
+              currentRound={displayRound}
+              totalRounds={match.total_rounds}
+              status={match.status}
+            />
 
-              <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[22px] border border-white/10 bg-slate-950/40 p-4">
-                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Criminal persona
-                  </dt>
-                  <dd className="mt-2 text-base font-medium text-slate-50">
-                    {formatPersona(match.criminal_persona)}
-                  </dd>
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-slate-950/40 p-4">
-                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Round
-                  </dt>
-                  <dd className="mt-2 text-base font-medium text-slate-50">
-                    {match.current_round}/{match.total_rounds}
-                  </dd>
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-slate-950/40 p-4">
-                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Share URL
-                  </dt>
-                  <dd className="mt-2 break-all font-mono text-sm text-slate-50">
-                    {match.share_url || "Pending"}
-                  </dd>
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-slate-950/40 p-4">
-                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Score stream
-                  </dt>
-                  <dd className="mt-2 text-base font-medium text-slate-50">
-                    F1 {(match.score.f1_score || 0).toFixed(2)} · Recall{" "}
-                    {(match.score.recall || 0).toFixed(2)}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.84)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                    Feed Legend
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-50">
-                    What this panel is telling you
-                  </h2>
-                </div>
-                <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 p-3 text-emerald-100">
-                  <Shield className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                <div className="rounded-[22px] border border-white/10 bg-slate-950/40 p-4 text-sm leading-6 text-slate-300">
-                  Red-glow rows are confirmed fraud. Amber-highlighted rows are
-                  defender mistakes that deserve immediate attention during the
-                  demo.
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-slate-950/40 p-4 text-sm leading-6 text-slate-300">
-                  The feed is capped at the newest 50 processed transactions so
-                  the panel stays readable even once later scenarios begin
-                  flooding hundreds of events through the websocket.
-                </div>
-                <div className="rounded-[22px] border border-white/10 bg-slate-950/40 p-4 text-sm leading-6 text-slate-300">
-                  <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-100">
-                    <RadioTower className="h-3.5 w-3.5" />
-                    Connection
-                  </div>
-                  Transaction rows update live from `WS /ws/match/{matchId}`.
-                  Broader websocket-driven dashboard wiring is still coming in
-                  later Phase 5 tasks.
-                </div>
-              </div>
-            </section>
+            <TransactionMap entries={feedEntries} />
           </div>
         </div>
       </div>

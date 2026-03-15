@@ -83,6 +83,47 @@ body::before {
   }
 }
 
+@keyframes map-pulse-ring {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.72);
+    opacity: 0;
+  }
+}
+
+@keyframes map-hq-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.14;
+  }
+  100% {
+    transform: scale(1.32);
+    opacity: 0;
+  }
+}
+
+@keyframes map-route-draw {
+  0% {
+    stroke-dashoffset: var(--route-length, 120);
+    opacity: 0.95;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -90,6 +131,20 @@ a {
 
 .risk-meter-breach {
   animation: risk-meter-breach 1.4s ease-in-out infinite;
+}
+
+.map-pulse-ring {
+  transform-origin: center;
+  animation: map-pulse-ring 1.8s ease-out infinite;
+}
+
+.map-hq-pulse {
+  transform-origin: center;
+  animation: map-hq-pulse 2.2s ease-out infinite;
+}
+
+.map-route-draw {
+  animation: map-route-draw 1s ease-out forwards;
 }
 
 button,
