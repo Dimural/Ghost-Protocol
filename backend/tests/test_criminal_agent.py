@@ -15,6 +15,11 @@ def target_persona():
     return load_personas()[1]
 
 
+@pytest.fixture(autouse=True)
+def default_to_mock_llm(monkeypatch):
+    monkeypatch.setattr("backend.agents.criminal_agent.USE_MOCK_LLM", True)
+
+
 def _attack(
     *,
     tx_id: str,

@@ -24,7 +24,8 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from backend.data.models import Transaction, TransactionType, Persona
-from backend.config import GEMINI_API_KEY, USE_MOCK_LLM
+from backend.config import GEMINI_FLASH_MODEL, USE_MOCK_LLM
+from backend.gemini_client import GEMINI_CLIENT
 
 # ---------------------------------------------------------------------------
 # Persona loader
@@ -63,6 +64,45 @@ location_city, location_country, transaction_type, is_fraud (always false), frau
 
 No markdown, no preamble. Pure JSON array only.
 """
+
+NORMAL_TRANSACTION_RESPONSE_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "timestamp": {"type": "string"},
+            "user_id": {"type": "string"},
+            "amount": {"type": "number"},
+            "currency": {"type": "string"},
+            "merchant": {"type": "string"},
+            "category": {"type": "string"},
+            "location_city": {"type": "string"},
+            "location_country": {"type": "string"},
+            "transaction_type": {
+                "type": "string",
+                "enum": [member.value for member in TransactionType],
+            },
+            "is_fraud": {"type": "boolean"},
+            "fraud_type": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "null"},
+                ]
+            },
+        },
+        "required": [
+            "amount",
+            "currency",
+            "merchant",
+            "category",
+            "location_city",
+            "location_country",
+            "transaction_type",
+            "is_fraud",
+        ],
+    },
+}
 
 # ---------------------------------------------------------------------------
 # Mock merchant data — realistic per-category merchant/amount pools
@@ -319,11 +359,6 @@ async def _generate_llm_transactions(
     persona: Persona, count: int
 ) -> list[Transaction]:
     """Generate transactions using the Gemini LLM."""
-    import google.generativeai as genai
-
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-
     prompt = GENERATE_NORMAL_TRANSACTIONS_PROMPT.format(
         count=count,
         name=persona.name,
@@ -333,15 +368,13 @@ async def _generate_llm_transactions(
         income=persona.income,
     )
 
-    response = model.generate_content(prompt)
-    raw_json = response.text.strip()
-
-    # Clean up possible markdown fencing
-    if raw_json.startswith("```"):
-        raw_json = raw_json.split("\n", 1)[1]
-        raw_json = raw_json.rsplit("```", 1)[0]
-
-    data = json.loads(raw_json)
+    data = await GEMINI_CLIENT.generate_json(
+        model=GEMINI_FLASH_MODEL,
+        prompt=prompt,
+        response_schema=NORMAL_TRANSACTION_RESPONSE_SCHEMA,
+        temperature=0.8,
+        max_output_tokens=4096,
+    )
     return [Transaction(**tx) for tx in data]
 
 

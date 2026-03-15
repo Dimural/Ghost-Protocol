@@ -76,6 +76,7 @@ async def test_report_generator_builds_and_persists_mock_report():
     assert report.security_gaps
     assert report.risk_rating in {"HIGH", "CRITICAL"}
     assert report.critical_vulnerabilities
+    assert report.recommendations
     assert report.recommended_fixes
     first_gap = report.security_gaps[0]
     assert first_gap.pattern_name
@@ -83,12 +84,22 @@ async def test_report_generator_builds_and_persists_mock_report():
     assert first_gap.total_money_slipped_through > 0
     assert first_gap.example_transaction.merchant_label.startswith("redacted ")
     assert first_gap.example_transaction.time_window
+    first_recommendation = report.recommendations[0]
+    assert first_recommendation.title
+    assert first_recommendation.priority in {"HIGH", "MEDIUM", "LOW"}
+    assert first_recommendation.action
+    assert first_recommendation.rationale
+    assert any(recommendation.code_hint for recommendation in report.recommendations)
+    assert report.recommended_fixes == [
+        recommendation.action for recommendation in report.recommendations
+    ]
 
     persisted = REPORT_STORE.load("report-match")
     assert persisted is not None
     assert persisted.report_id == report.report_id
     assert persisted.executive_summary == report.executive_summary
     assert persisted.security_gaps == report.security_gaps
+    assert persisted.recommendations == report.recommendations
 
 
 @pytest.mark.asyncio

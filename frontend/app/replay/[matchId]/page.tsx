@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Clock3,
+  FileText,
   MapPinned,
   Pause,
   Play,
@@ -347,6 +348,15 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               strategy note for each transaction.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
+              {match.status === "complete" || match.report_id ? (
+                <Link
+                  href={`/report/${matchId}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-2.5 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/15"
+                >
+                  <FileText className="h-4 w-4" />
+                  Open post-game report
+                </Link>
+              ) : null}
               <Link
                 href={`/match/${matchId}`}
                 className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-5 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
@@ -413,6 +423,17 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               </div>
             </div>
           </div>
+          {(match.status === "complete" || match.report_id) && (
+            <div className="mt-6">
+              <Link
+                href={`/report/${matchId}`}
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/15"
+              >
+                <FileText className="h-4 w-4" />
+                Open post-game report
+              </Link>
+            </div>
+          )}
         </section>
 
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">

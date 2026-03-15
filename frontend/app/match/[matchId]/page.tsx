@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Copy,
   ExternalLink,
+  FileText,
   KeyRound,
   Lock,
   ShieldAlert,
@@ -268,6 +269,7 @@ export default function MatchPage({ params }: MatchPageProps) {
               ...currentMatch,
               status: "complete",
               current_round: currentMatch.total_rounds,
+              report_id: event.report_id ?? currentMatch.report_id ?? null,
               score: event.final_score,
             }
           : currentMatch,
@@ -355,6 +357,15 @@ export default function MatchPage({ params }: MatchPageProps) {
                 Back to setup
               </Link>
               <div className="mt-4 flex flex-wrap gap-3">
+                {match.status === "complete" || match.report_id ? (
+                  <Link
+                    href={`/report/${matchId}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/15"
+                  >
+                    <FileText className="h-4 w-4" />
+                    View post-game report
+                  </Link>
+                ) : null}
                 <Link
                   href={`/replay/${matchId}`}
                   className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-300/15"

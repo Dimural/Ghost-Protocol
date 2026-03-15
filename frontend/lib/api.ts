@@ -96,7 +96,66 @@ export type MatchStateResponse = {
   defender_mode?: "webhook" | "police_ai" | null;
   target_persona_id?: string | null;
   latest_notification?: AttackerAdaptingMessage | null;
+  report_id?: string | null;
+  report_generated_at?: string | null;
   updated_at: string;
+};
+
+export type SecurityGapExampleResponse = {
+  amount: number;
+  currency: string;
+  merchant_label: string;
+  category: string;
+  location: string;
+  transaction_type: string;
+  fraud_type?: string | null;
+  time_window: string;
+};
+
+export type SecurityGapResponse = {
+  pattern_name: string;
+  category:
+    | "amount_range"
+    | "time_of_day"
+    | "location"
+    | "merchant_category"
+    | "fraud_type";
+  description: string;
+  transactions_exploited: number;
+  total_money_slipped_through: number;
+  example_transaction: SecurityGapExampleResponse;
+};
+
+export type RecommendationResponse = {
+  title: string;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  action: string;
+  rationale: string;
+  code_hint?: string | null;
+};
+
+export type MatchReportResponse = {
+  report_id: string;
+  match_id: string;
+  generated_at: string;
+  runtime_mode: "mock" | "gemini";
+  scenario_name: string;
+  criminal_persona?: CriminalPersona | null;
+  rounds_completed: number;
+  total_rounds: number;
+  final_score: MatchScorePayload;
+  total_fraud_transactions: number;
+  caught: number;
+  missed: number;
+  money_defended: number;
+  money_lost: number;
+  security_gaps: SecurityGapResponse[];
+  executive_summary: string;
+  critical_vulnerabilities: string[];
+  attack_pattern_analysis: string;
+  recommendations: RecommendationResponse[];
+  recommended_fixes: string[];
+  risk_rating: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 };
 
 async function requestJson<T>(
@@ -198,4 +257,15 @@ export function startMatch(matchId: string): Promise<MatchStateSummary> {
 
 export function getMatch(matchId: string): Promise<MatchStateResponse> {
   return requestJson<MatchStateResponse>(`/api/match/${matchId}`);
+}
+
+export function getReport(matchId: string): Promise<MatchReportResponse> {
+  return requestJson<MatchReportResponse>(`/api/report/${matchId}`);
+}
+
+export function getReportExportUrl(
+  matchId: string,
+  format: "json" | "pdf",
+): string {
+  return getApiUrl(`/api/report/${matchId}/export?format=${format}`);
 }

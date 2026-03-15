@@ -17,8 +17,9 @@ from statistics import median
 from time import perf_counter
 from typing import Any, Iterable
 
-from backend.config import GEMINI_API_KEY, USE_MOCK_LLM
+from backend.config import GEMINI_FLASH_MODEL, USE_MOCK_LLM
 from backend.data.models import DefenderDecision, Transaction, TransactionType
+from backend.gemini_client import GEMINI_CLIENT, summarize_exception
 
 SEED_TRANSACTIONS_PATH = Path(__file__).resolve().parent.parent / "data" / "transactions.json"
 
@@ -39,6 +40,23 @@ Be careful not to flag normal behavior — false positives are costly.
 Return ONLY: {"decision": "APPROVE" or "DENY", "confidence": 0.0-1.0, "reason": "brief explanation"}
 No markdown. Pure JSON only.
 """.strip()
+
+POLICE_DECISION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "decision": {
+            "type": "string",
+            "enum": ["APPROVE", "DENY"],
+        },
+        "confidence": {
+            "type": "number",
+        },
+        "reason": {
+            "type": "string",
+        },
+    },
+    "required": ["decision", "confidence", "reason"],
+}
 
 
 @dataclass
@@ -93,7 +111,7 @@ class PoliceAgent:
         except Exception as exc:
             decision = self._evaluate_with_rules(transaction, recent_transactions)
             self.last_reasoning = (
-                f"Gemini evaluation failed ({exc.__class__.__name__}); "
+                f"Gemini evaluation failed: {summarize_exception(exc)}; "
                 f"fell back to local heuristic police logic."
             )
             if decision.reason:
@@ -309,11 +327,6 @@ class PoliceAgent:
         transaction: Transaction,
         recent_transactions: Iterable[Transaction],
     ) -> Any:
-        import google.generativeai as genai
-
-        if not GEMINI_API_KEY:
-            raise RuntimeError("Gemini API key is missing; cannot run Police AI prompt.")
-
         history_summary = self._recent_history_summary(recent_transactions)
         prompt = (
             "Analyze this transaction and return only JSON.\n\n"
@@ -326,13 +339,14 @@ class PoliceAgent:
             f"- timestamp: {transaction.timestamp}\n\n"
             f"Recent history:\n{history_summary}\n"
         )
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(f"{self.system_prompt}\n\n{prompt}")
-        raw_text = (response.text or "").strip()
-        cleaned = self._strip_markdown_fences(raw_text)
-        return json.loads(cleaned)
+        return await GEMINI_CLIENT.generate_json(
+            model=GEMINI_FLASH_MODEL,
+            system_prompt=self.system_prompt,
+            prompt=prompt,
+            response_schema=POLICE_DECISION_SCHEMA,
+            temperature=0.2,
+            max_output_tokens=1024,
+        )
 
     def _recent_history_summary(self, recent_transactions: Iterable[Transaction]) -> str:
         recent_list = list(recent_transactions)

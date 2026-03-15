@@ -18,13 +18,15 @@ from typing import Any, Literal
 import redis
 from pydantic import BaseModel, Field
 
-from backend.config import GEMINI_API_KEY, REDIS_URL, USE_MOCK_LLM
+from backend.config import GEMINI_PRO_MODEL, REDIS_URL, USE_MOCK_LLM
 from backend.core.blind_spot_detector import BlindSpot, BlindSpotCategory, BlindSpotDetector
 from backend.core.match_state import MATCH_STATE_STORE, MatchState, utc_now
 from backend.core.referee import MatchScore, RefereeEngine
+from backend.gemini_client import GEMINI_CLIENT
 
 RiskRating = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 RuntimeMode = Literal["mock", "gemini"]
+RecommendationPriority = Literal["HIGH", "MEDIUM", "LOW"]
 
 REPORT_PROMPT = """
 You are a senior cybersecurity analyst reviewing the results of a fraud simulation.
@@ -45,16 +47,68 @@ Write a professional security assessment that includes:
 1. Executive Summary (2-3 sentences)
 2. Critical Vulnerabilities (list the blind spots in plain English)
 3. Attack Pattern Analysis (what strategies the attacker used)
-4. Recommended Fixes (3-5 specific, actionable recommendations)
+4. Recommendations (3-5 specific, actionable recommendations with code-level hints when appropriate)
 5. Risk Rating: LOW / MEDIUM / HIGH / CRITICAL
 
 Return ONLY JSON with these keys:
 - executive_summary
 - critical_vulnerabilities
 - attack_pattern_analysis
-- recommended_fixes
+- recommendations
 - risk_rating
+
+Each recommendation object must contain:
+- title
+- priority
+- action
+- rationale
+- code_hint
 """.strip()
+
+REPORT_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "executive_summary": {"type": "string"},
+        "critical_vulnerabilities": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "attack_pattern_analysis": {"type": "string"},
+        "recommendations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "priority": {
+                        "type": "string",
+                        "enum": ["HIGH", "MEDIUM", "LOW"],
+                    },
+                    "action": {"type": "string"},
+                    "rationale": {"type": "string"},
+                    "code_hint": {
+                        "anyOf": [
+                            {"type": "string"},
+                            {"type": "null"},
+                        ]
+                    },
+                },
+                "required": ["title", "priority", "action", "rationale"],
+            },
+        },
+        "risk_rating": {
+            "type": "string",
+            "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+        },
+    },
+    "required": [
+        "executive_summary",
+        "critical_vulnerabilities",
+        "attack_pattern_analysis",
+        "recommendations",
+        "risk_rating",
+    ],
+}
 
 
 class MatchReport(BaseModel):
@@ -77,6 +131,7 @@ class MatchReport(BaseModel):
     executive_summary: str
     critical_vulnerabilities: list[str] = Field(default_factory=list)
     attack_pattern_analysis: str
+    recommendations: list["Recommendation"] = Field(default_factory=list)
     recommended_fixes: list[str] = Field(default_factory=list)
     risk_rating: RiskRating
 
@@ -99,6 +154,14 @@ class SecurityGap(BaseModel):
     transactions_exploited: int
     total_money_slipped_through: float
     example_transaction: AnonymizedTransactionExample
+
+
+class Recommendation(BaseModel):
+    title: str
+    priority: RecommendationPriority
+    action: str
+    rationale: str
+    code_hint: str | None = None
 
 
 class MatchReportStore:
@@ -247,7 +310,8 @@ class ReportGenerator:
             executive_summary=sections["executive_summary"],
             critical_vulnerabilities=sections["critical_vulnerabilities"],
             attack_pattern_analysis=sections["attack_pattern_analysis"],
-            recommended_fixes=sections["recommended_fixes"],
+            recommendations=sections["recommendations"],
+            recommended_fixes=[recommendation.action for recommendation in sections["recommendations"]],
             risk_rating=sections["risk_rating"],
         )
         self._store.save(report)
@@ -288,13 +352,13 @@ class ReportGenerator:
         executive_summary = self._build_executive_summary(match_state, summary, risk_rating)
         critical_vulnerabilities = self._build_critical_vulnerabilities(blind_spots, summary)
         attack_pattern_analysis = self._build_attack_pattern_analysis(match_state)
-        recommended_fixes = self._build_recommendations(blind_spots, summary)
+        recommendations = self._build_recommendation_items(blind_spots, summary)
 
         return {
             "executive_summary": executive_summary,
             "critical_vulnerabilities": critical_vulnerabilities,
             "attack_pattern_analysis": attack_pattern_analysis,
-            "recommended_fixes": recommended_fixes,
+            "recommendations": recommendations,
             "risk_rating": risk_rating,
         }
 
@@ -304,11 +368,6 @@ class ReportGenerator:
         blind_spots: list[BlindSpot],
         summary: dict[str, Any],
     ) -> dict[str, Any]:
-        import google.generativeai as genai
-
-        if not GEMINI_API_KEY:
-            raise RuntimeError("Gemini API key is missing; cannot generate the final report.")
-
         prompt = REPORT_PROMPT.format(
             scenario_name=match_state.scenario_name,
             criminal_persona=match_state.criminal_persona or "unknown",
@@ -321,13 +380,13 @@ class ReportGenerator:
             money_lost=f"{summary['money_lost']:.2f}",
             blind_spots=self._format_blind_spots_for_prompt(blind_spots),
         )
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-pro")
-        response = model.generate_content(prompt)
-        raw_text = (response.text or "").strip()
-        cleaned = self._strip_markdown_fences(raw_text)
-        payload = json.loads(cleaned)
+        payload = await GEMINI_CLIENT.generate_json(
+            model=GEMINI_PRO_MODEL,
+            prompt=prompt,
+            response_schema=REPORT_RESPONSE_SCHEMA,
+            temperature=0.3,
+            max_output_tokens=4096,
+        )
         return self._normalize_llm_sections(payload)
 
     def _determine_risk_rating(self, match_state: MatchState, summary: dict[str, Any]) -> RiskRating:
@@ -441,61 +500,172 @@ class ReportGenerator:
 
         return base
 
-    def _build_recommendations(
+    def _build_recommendation_items(
         self,
         blind_spots: list[BlindSpot],
         summary: dict[str, Any],
-    ) -> list[str]:
-        recommendations: list[str] = []
+    ) -> list[Recommendation]:
+        recommendations: list[Recommendation] = []
 
         for blind_spot in blind_spots:
             if blind_spot.category == "amount_range":
                 recommendations.append(
-                    f"Add rolling-threshold and velocity checks for fraud clustered in the "
-                    f"{blind_spot.pattern} band rather than treating those amounts as low-risk by default."
+                    Recommendation(
+                        title="Add cumulative amount-band controls",
+                        priority="HIGH",
+                        action=(
+                            f"Add rolling-threshold and velocity checks for fraud clustered in the "
+                            f"{blind_spot.pattern} band rather than treating those amounts as low-risk by default."
+                        ),
+                        rationale=(
+                            f"The defender repeatedly approved fraud in the {blind_spot.pattern} range, "
+                            "which indicates single-transaction scoring is missing cumulative exposure."
+                        ),
+                        code_hint=(
+                            "Track per-user approved spend and transaction count in rolling 60-minute and "
+                            "24-hour windows; escalate or deny once either threshold is exceeded."
+                        ),
+                    )
                 )
             elif blind_spot.category == "time_of_day":
                 recommendations.append(
-                    f"Increase scrutiny for transactions during {blind_spot.pattern} with step-up "
-                    "verification or temporary confidence penalties."
+                    Recommendation(
+                        title="Strengthen time-of-day risk scoring",
+                        priority="MEDIUM",
+                        action=(
+                            f"Increase scrutiny for transactions during {blind_spot.pattern} with step-up "
+                            "verification or temporary confidence penalties."
+                        ),
+                        rationale=(
+                            "Missed fraud is clustering inside a repeatable time window, so the detector "
+                            "should treat that period as a stronger contextual signal."
+                        ),
+                        code_hint=(
+                            "Introduce a time-window feature in the rule engine and add a risk multiplier "
+                            "for transactions falling inside low-trust hours."
+                        ),
+                    )
                 )
             elif blind_spot.category == "location":
                 recommendations.append(
-                    f"Introduce location-consistency scoring for activity coming from {blind_spot.pattern}, "
-                    "including impossible-travel and first-seen-location logic."
+                    Recommendation(
+                        title="Add location-consistency checks",
+                        priority="HIGH",
+                        action=(
+                            f"Introduce location-consistency scoring for activity coming from {blind_spot.pattern}, "
+                            "including impossible-travel and first-seen-location logic."
+                        ),
+                        rationale=(
+                            "Repeated misses from the same geography suggest the current rules do not "
+                            "penalize out-of-pattern locations aggressively enough."
+                        ),
+                        code_hint=(
+                            "Persist recent approved locations per user and score new cities/countries against "
+                            "that baseline before approval."
+                        ),
+                    )
                 )
             elif blind_spot.category == "merchant_category":
                 recommendations.append(
-                    f"Build user-level category baselines and secondary review triggers for "
-                    f"{blind_spot.pattern} transactions."
+                    Recommendation(
+                        title="Baseline merchant-category behavior",
+                        priority="MEDIUM",
+                        action=(
+                            f"Build user-level category baselines and secondary review triggers for "
+                            f"{blind_spot.pattern} transactions."
+                        ),
+                        rationale=(
+                            "The same category keeps bypassing the defender, which points to weak "
+                            "category-level personalization in the current detection flow."
+                        ),
+                        code_hint=(
+                            "Compute per-user category frequency features and increase review sensitivity when "
+                            "a category is rare or first-seen for that account."
+                        ),
+                    )
                 )
             elif blind_spot.category == "fraud_type":
                 recommendations.append(
-                    f"Add explicit regression coverage for the {blind_spot.pattern} pattern so future rule "
-                    "changes are tested against the same exploit family."
+                    Recommendation(
+                        title="Codify exploit-family regression tests",
+                        priority="MEDIUM",
+                        action=(
+                            f"Add explicit regression coverage for the {blind_spot.pattern} pattern so future rule "
+                            "changes are tested against the same exploit family."
+                        ),
+                        rationale=(
+                            "A named fraud pattern is recurring in misses, which means the platform should "
+                            "treat it as a first-class regression target."
+                        ),
+                        code_hint=(
+                            "Add a scenario fixture for this fraud type and run it in CI whenever risk rules "
+                            "or model thresholds change."
+                        ),
+                    )
                 )
 
         if summary["missed"] > 0:
             recommendations.append(
-                "Combine single-transaction rules with rolling 24-hour correlation so individually small "
-                "approvals cannot accumulate into material fraud loss."
+                Recommendation(
+                    title="Correlate approvals across a rolling horizon",
+                    priority="HIGH",
+                    action=(
+                        "Combine single-transaction rules with rolling 24-hour correlation so individually small "
+                        "approvals cannot accumulate into material fraud loss."
+                    ),
+                    rationale=(
+                        "Missed fraud still occurred in this match, so the defender needs stronger "
+                        "cross-transaction memory instead of isolated transaction review."
+                    ),
+                    code_hint=(
+                        "Aggregate transaction count, total approved amount, and merchant/location reuse in a "
+                        "rolling state store keyed by account."
+                    ),
+                )
             )
 
         recommendations.extend(
             [
-                "Feed completed Ghost Protocol matches into a regression suite so defender changes are "
-                "evaluated against historical attacker adaptations before deployment.",
-                "Log and review false positives alongside missed fraud so rule tuning improves recall "
-                "without introducing unnecessary customer friction.",
+                Recommendation(
+                    title="Turn completed matches into regression suites",
+                    priority="MEDIUM",
+                    action=(
+                        "Feed completed Ghost Protocol matches into a regression suite so defender changes are "
+                        "evaluated against historical attacker adaptations before deployment."
+                    ),
+                    rationale=(
+                        "Historical matches already capture attacker adaptations, making them ideal for "
+                        "preventing detection regressions."
+                    ),
+                    code_hint=(
+                        "Store canonical match fixtures and replay them automatically in CI after rule or model changes."
+                    ),
+                ),
+                Recommendation(
+                    title="Tune false positives and misses together",
+                    priority="LOW",
+                    action=(
+                        "Log and review false positives alongside missed fraud so rule tuning improves recall "
+                        "without introducing unnecessary customer friction."
+                    ),
+                    rationale=(
+                        "A good fraud program balances customer impact with fraud containment; looking at one side "
+                        "alone leads to unstable thresholds."
+                    ),
+                    code_hint=(
+                        "Export both false-positive and false-negative metrics into a shared dashboard before "
+                        "changing thresholds."
+                    ),
+                ),
             ]
         )
 
-        deduped: list[str] = []
+        deduped: list[Recommendation] = []
         seen: set[str] = set()
         for recommendation in recommendations:
-            if recommendation in seen:
+            if recommendation.title in seen:
                 continue
-            seen.add(recommendation)
+            seen.add(recommendation.title)
             deduped.append(recommendation)
 
         return deduped[:5]
@@ -529,17 +699,50 @@ class ReportGenerator:
         if not isinstance(critical_vulnerabilities, list):
             raise ValueError("Gemini report response returned invalid vulnerabilities.")
 
-        recommended_fixes = payload.get("recommended_fixes")
-        if isinstance(recommended_fixes, str):
-            recommended_fixes = [recommended_fixes]
-        if not isinstance(recommended_fixes, list):
+        raw_recommendations = payload.get("recommendations")
+        if raw_recommendations is None and "recommended_fixes" in payload:
+            legacy_recommendations = payload.get("recommended_fixes")
+            if isinstance(legacy_recommendations, str):
+                legacy_recommendations = [legacy_recommendations]
+            raw_recommendations = legacy_recommendations
+        if not isinstance(raw_recommendations, list):
             raise ValueError("Gemini report response returned invalid recommendations.")
+
+        recommendations: list[Recommendation] = []
+        for index, item in enumerate(raw_recommendations, start=1):
+            if isinstance(item, str):
+                text = item.strip()
+                if not text:
+                    continue
+                recommendations.append(
+                    Recommendation(
+                        title=f"Recommendation {index}",
+                        priority="MEDIUM",
+                        action=text,
+                        rationale="Generated by Gemini from the completed match summary.",
+                        code_hint=None,
+                    )
+                )
+                continue
+
+            if not isinstance(item, dict):
+                raise ValueError("Gemini report response returned an invalid recommendation item.")
+
+            recommendation_payload = dict(item)
+            priority = str(recommendation_payload.get("priority", "MEDIUM")).strip().upper()
+            recommendation_payload["priority"] = priority if priority in {"HIGH", "MEDIUM", "LOW"} else "MEDIUM"
+            recommendation_payload["title"] = str(recommendation_payload.get("title", "")).strip() or f"Recommendation {index}"
+            recommendation_payload["action"] = str(recommendation_payload.get("action", "")).strip()
+            recommendation_payload["rationale"] = str(recommendation_payload.get("rationale", "")).strip() or "Generated by Gemini from the completed match summary."
+            code_hint = recommendation_payload.get("code_hint")
+            recommendation_payload["code_hint"] = None if code_hint in (None, "") else str(code_hint).strip()
+            recommendations.append(Recommendation.model_validate(recommendation_payload))
 
         return {
             "executive_summary": executive_summary,
             "critical_vulnerabilities": [str(item).strip() for item in critical_vulnerabilities if str(item).strip()],
             "attack_pattern_analysis": attack_pattern_analysis,
-            "recommended_fixes": [str(item).strip() for item in recommended_fixes if str(item).strip()],
+            "recommendations": recommendations,
             "risk_rating": risk_rating,
         }
 

@@ -25,9 +25,10 @@ from backend.agents.criminal_prompts import (
     PERSONA_PROMPTS,
     TRANSACTION_SCHEMA,
 )
-from backend.config import GEMINI_API_KEY, USE_MOCK_LLM
+from backend.config import GEMINI_FLASH_MODEL, USE_MOCK_LLM
 from backend.data.generator import load_personas
 from backend.data.models import Persona, Transaction, TransactionType
+from backend.gemini_client import GEMINI_CLIENT, summarize_exception
 
 PERSONAS_BY_ID = {persona.id: persona for persona in load_personas()}
 SEED_TRANSACTIONS_PATH = Path(__file__).resolve().parent.parent / "data" / "transactions.json"
@@ -64,6 +65,38 @@ FOREIGN_ATTACK_LOCATIONS = [
     ("Shenzhen", "China"),
     ("Moscow", "Russia"),
 ]
+
+ATTACK_RESPONSE_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "timestamp": {"type": "string"},
+            "amount": {"type": "number"},
+            "currency": {"type": "string"},
+            "merchant": {"type": "string"},
+            "category": {"type": "string"},
+            "location_city": {"type": "string"},
+            "location_country": {"type": "string"},
+            "transaction_type": {
+                "type": "string",
+                "enum": [member.value for member in TransactionType],
+            },
+            "fraud_type": {"type": "string"},
+            "notes": {"type": "string"},
+            "strategy": {"type": "string"},
+        },
+        "required": [
+            "amount",
+            "merchant",
+            "category",
+            "location_city",
+            "location_country",
+            "transaction_type",
+        ],
+    },
+}
 
 
 @dataclass
@@ -113,7 +146,7 @@ class CriminalAgent:
         except Exception as exc:
             attacks = self._generate_mock_attacks(persona, rules, count)
             self.last_strategy_notes = (
-                f"Gemini generation failed ({exc.__class__.__name__}); "
+                f"Gemini generation failed: {summarize_exception(exc)}; "
                 f"fell back to local {self.persona} mock attacks."
             )
 
@@ -163,7 +196,7 @@ class CriminalAgent:
                 inferred_pattern,
             )
             self.last_adaptation_reasoning = (
-                f"Gemini adaptation failed ({exc.__class__.__name__}); "
+                f"Gemini adaptation failed: {summarize_exception(exc)}; "
                 f"fell back to local {self.persona} adaptation logic."
             )
 
@@ -588,17 +621,14 @@ class CriminalAgent:
         return attacks
 
     async def _run_gemini_prompt(self, system_prompt: str, prompt: str) -> Any:
-        import google.generativeai as genai
-
-        if not GEMINI_API_KEY:
-            raise RuntimeError("Gemini API key is missing; cannot run LLM prompt.")
-
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(f"{system_prompt.strip()}\n\n{prompt.strip()}")
-        raw_text = (response.text or "").strip()
-        cleaned = self._strip_markdown_fences(raw_text)
-        return json.loads(cleaned)
+        return await GEMINI_CLIENT.generate_json(
+            model=GEMINI_FLASH_MODEL,
+            system_prompt=system_prompt,
+            prompt=prompt,
+            response_schema=ATTACK_RESPONSE_SCHEMA,
+            temperature=0.7,
+            max_output_tokens=4096,
+        )
 
     def _transactions_from_payload(
         self,
