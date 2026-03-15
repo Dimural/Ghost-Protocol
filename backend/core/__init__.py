@@ -12,6 +12,14 @@ from backend.core.match_state import (
     utc_now,
 )
 from backend.core.orchestrator import MATCH_ORCHESTRATOR, MatchOrchestrator
+from backend.core.report_generator import (
+    REPORT_GENERATOR,
+    REPORT_STORE,
+    MatchReport,
+    MatchReportStore,
+    ReportGenerator,
+    get_match_report,
+)
 from backend.core.referee import MatchScore, RefereeEngine, ScoreTransactionResult, TransactionProcessedEvent
 
 __all__ = [
@@ -24,11 +32,17 @@ __all__ = [
     "MatchScore",
     "MatchState",
     "MatchStateStore",
+    "MatchReport",
+    "MatchReportStore",
     "MatchOrchestrator",
+    "REPORT_GENERATOR",
+    "REPORT_STORE",
     "RefereeEngine",
+    "ReportGenerator",
     "ScoreTransactionResult",
     "TransactionProcessedEvent",
     "get_match_state",
+    "get_match_report",
     "save_match_state",
     "utc_now",
 ]

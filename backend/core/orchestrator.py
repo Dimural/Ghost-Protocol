@@ -20,6 +20,7 @@ from backend.core.match_state import (
     MatchState,
     utc_now,
 )
+from backend.core.report_generator import REPORT_GENERATOR
 from backend.core.referee import RefereeEngine
 from backend.data.generator import load_personas
 from backend.data.models import DefenderDecision, Persona, Transaction
@@ -99,7 +100,23 @@ class MatchOrchestrator:
                             "updated_at": utc_now(),
                         }
                     )
-                    await emit_match_complete(match_id, completed_state.score)
+                    self._match_store.save(completed_state)
+
+                    report_id: str | None = None
+                    try:
+                        report = await REPORT_GENERATOR.generate(completed_state, force=True)
+                        report_id = report.report_id
+                        completed_state = completed_state.model_copy(
+                            update={
+                                "report_id": report.report_id,
+                                "report_generated_at": report.generated_at,
+                                "updated_at": utc_now(),
+                            }
+                        )
+                    except Exception:
+                        completed_state = completed_state.model_copy(update={"updated_at": utc_now()})
+
+                    await emit_match_complete(match_id, completed_state.score, report_id=report_id)
                     self._match_store.save(completed_state)
                     return
 

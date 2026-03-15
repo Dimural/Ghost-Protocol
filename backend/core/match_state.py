@@ -93,6 +93,8 @@ class MatchState(BaseModel):
     latest_notification: AdaptationNotification | None = None
     defender_id: str | None = None
     defender_mode: DefenderMode | None = None
+    report_id: str | None = None
+    report_generated_at: str | None = None
     updated_at: str = Field(default_factory=utc_now)
 
     @property
@@ -224,6 +226,8 @@ class MatchStateStore:
             "latest_notification": payload.get("latest_notification"),
             "defender_id": payload.get("defender_id"),
             "defender_mode": payload.get("defender_mode"),
+            "report_id": payload.get("report_id"),
+            "report_generated_at": payload.get("report_generated_at"),
             "updated_at": updated_at,
         }
 

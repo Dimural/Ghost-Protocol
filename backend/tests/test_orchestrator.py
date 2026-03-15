@@ -8,6 +8,7 @@ from backend.core.dispatcher import _ERROR_STORE
 from backend.core.match_state import MATCH_STATE_STORE
 from backend.core.match_state import MatchState
 from backend.core.orchestrator import MATCH_ORCHESTRATOR
+from backend.core.report_generator import REPORT_STORE
 import backend.core.orchestrator as orchestrator_module
 from backend.main import app
 from backend.routes.defender import _DEFENDER_STORE
@@ -22,6 +23,8 @@ def isolate_orchestrator_state(tmp_path, monkeypatch):
     monkeypatch.setattr(_DEFENDER_STORE, "_redis_client", None)
     monkeypatch.setattr(_ERROR_STORE, "_fallback_path", tmp_path / "defender-errors.json")
     monkeypatch.setattr(_ERROR_STORE, "_redis_client", None)
+    monkeypatch.setattr(REPORT_STORE, "_fallback_path", tmp_path / "reports.json")
+    monkeypatch.setattr(REPORT_STORE, "_redis_client", None)
     monkeypatch.setattr(orchestrator_module, "DEFAULT_ATTACKS_PER_ROUND", 3)
     monkeypatch.setattr(orchestrator_module, "TRANSACTION_DELAY_SECONDS", 0.0)
     monkeypatch.setattr(orchestrator_module, "ROUND_DELAY_SECONDS", 0.0)
@@ -48,6 +51,8 @@ async def test_orchestrator_runs_match_to_completion_with_police_ai():
     assert state.status == "complete"
     assert state.current_round == 2
     assert state.ended_at is not None
+    assert state.report_id is not None
+    assert state.report_generated_at is not None
     assert len(state.attack_rounds) == 2
     assert len(state.defender_decisions) == 6
     assert len(state.transactions) == 6
