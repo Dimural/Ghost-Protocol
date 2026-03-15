@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   BrainCircuit,
@@ -29,12 +30,14 @@ import {
 import { getBackendBaseUrl } from "@/lib/config";
 import {
   copyTextToClipboard,
-  rememberOwnedMatch,
+  getTrackedMatch,
   resolveAbsoluteShareUrl,
+  trackMatchLaunch,
 } from "@/lib/match-access";
 import {
   DEFAULT_SCENARIO_ID,
   SCENARIOS,
+  getScenarioById,
   type ScenarioDefinition,
 } from "@/lib/scenarios";
 
@@ -49,6 +52,19 @@ type LaunchSummary = {
   defenderId: string;
 };
 
+type CloneNotice =
+  | {
+      state: "ready";
+      sourceMatchId: string;
+      scenarioName: string;
+      detail: string;
+    }
+  | {
+      state: "missing";
+      sourceMatchId: string;
+      detail: string;
+    };
+
 const READY_STATUS: ConnectionStatus = {
   state: "ready",
   label: "Ready",
@@ -62,6 +78,24 @@ const AWAITING_WEBHOOK_STATUS: ConnectionStatus = {
   detail:
     "Enter a reachable webhook, then run Test Connection before launching the match.",
 };
+
+function buildClonedWebhookStatus(hasWebhookUrl: boolean): ConnectionStatus {
+  if (!hasWebhookUrl) {
+    return {
+      state: "idle",
+      label: "Clone Incomplete",
+      detail:
+        "The cloned webhook URL was not available. Enter it again, then run Test Connection before launching.",
+    };
+  }
+
+  return {
+    state: "idle",
+    label: "Clone Loaded",
+    detail:
+      "The cloned webhook URL is pre-filled. Run Test Connection again before launching the new match.",
+  };
+}
 
 const HOW_IT_WORKS = [
   {
@@ -88,7 +122,9 @@ function buildProbeMatchId(scenario: ScenarioDefinition): string {
   return `probe-${scenario.id}-${Date.now().toString(36)}`;
 }
 
-export default function Home() {
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const cloneMatchId = searchParams.get("clone");
   const [selectedScenarioId, setSelectedScenarioId] =
     useState<string>(DEFAULT_SCENARIO_ID);
   const [defenderMode, setDefenderMode] = useState<DefenderMode>("police_ai");
@@ -104,6 +140,8 @@ export default function Home() {
   const [shareCopyState, setShareCopyState] = useState<
     "idle" | "copied" | "failed"
   >("idle");
+  const [cloneNotice, setCloneNotice] = useState<CloneNotice | null>(null);
+  const lastAppliedCloneId = useRef<string | null>(null);
 
   const selectedScenario =
     SCENARIOS.find((scenario) => scenario.id === selectedScenarioId) ??
@@ -111,6 +149,61 @@ export default function Home() {
   const canLaunch =
     defenderMode === "police_ai" || connectionStatus.state === "success";
   const backendBaseUrl = getBackendBaseUrl();
+
+  useEffect(() => {
+    if (!cloneMatchId) {
+      lastAppliedCloneId.current = null;
+      setCloneNotice(null);
+      return;
+    }
+
+    if (lastAppliedCloneId.current === cloneMatchId) {
+      return;
+    }
+
+    const trackedMatch = getTrackedMatch(cloneMatchId);
+    if (
+      !trackedMatch ||
+      !trackedMatch.scenarioId ||
+      !trackedMatch.defenderMode
+    ) {
+      setCloneNotice({
+        state: "missing",
+        sourceMatchId: cloneMatchId,
+        detail:
+          "Clone data is not available in this browser anymore. Re-open the scenario library from the browser that launched the original match or choose a scenario manually.",
+      });
+      lastAppliedCloneId.current = cloneMatchId;
+      return;
+    }
+
+    const clonedScenario =
+      getScenarioById(trackedMatch.scenarioId) ?? SCENARIOS[0];
+    const clonedWebhookUrl =
+      trackedMatch.defenderMode === "webhook" ? trackedMatch.webhookUrl : "";
+
+    setSelectedScenarioId(clonedScenario.id);
+    setDefenderMode(trackedMatch.defenderMode);
+    setWebhookUrl(clonedWebhookUrl);
+    setConnectionStatus(
+      trackedMatch.defenderMode === "police_ai"
+        ? READY_STATUS
+        : buildClonedWebhookStatus(clonedWebhookUrl.trim().length > 0),
+    );
+    setLaunchError(null);
+    setLaunchSummary(null);
+    setShareCopyState("idle");
+    setCloneNotice({
+      state: "ready",
+      sourceMatchId: cloneMatchId,
+      scenarioName: trackedMatch.scenarioName,
+      detail:
+        trackedMatch.defenderMode === "police_ai"
+          ? "Police AI mode and scenario settings were cloned. Review them, then launch a fresh match."
+          : "Scenario and webhook settings were cloned. Re-test the webhook before launching the fresh match.",
+    });
+    lastAppliedCloneId.current = cloneMatchId;
+  }, [cloneMatchId]);
 
   function handleScenarioSelect(scenarioId: string) {
     setSelectedScenarioId(scenarioId);
@@ -222,7 +315,19 @@ export default function Home() {
 
       const startedMatch = await startMatch(createdMatch.match_id);
       const absoluteShareUrl = resolveAbsoluteShareUrl(createdMatch.share_url);
-      rememberOwnedMatch(createdMatch.match_id);
+      trackMatchLaunch({
+        matchId: createdMatch.match_id,
+        shareUrl: createdMatch.share_url,
+        scenarioId: selectedScenario.id,
+        scenarioName: selectedScenario.name,
+        criminalPersona: selectedScenario.criminalPersona,
+        totalRounds: selectedScenario.totalRounds,
+        defenderMode,
+        webhookUrl: defenderMode === "webhook" ? webhookUrl.trim() : "",
+        status: startedMatch.status,
+        currentRound: startedMatch.current_round ?? 0,
+        expiresAt: startedMatch.expires_at ?? null,
+      });
 
       setLaunchSummary({
         matchId: createdMatch.match_id,
@@ -304,7 +409,48 @@ export default function Home() {
                   </p>
                 </div>
               </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/scenarios"
+                  className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Scenario Library
+                </Link>
+              </div>
             </div>
+
+            {cloneNotice ? (
+              <section
+                className={`rounded-[28px] border p-5 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur ${
+                  cloneNotice.state === "ready"
+                    ? "border-cyan-300/20 bg-cyan-400/10"
+                    : "border-amber-300/20 bg-amber-300/10"
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.32em] text-slate-100/80">
+                      {cloneNotice.state === "ready"
+                        ? "Clone Loaded"
+                        : "Clone Unavailable"}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-slate-50">
+                      {cloneNotice.state === "ready"
+                        ? `Cloned from ${cloneNotice.scenarioName}`
+                        : "Original scenario data could not be restored"}
+                    </h2>
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-100">
+                    Source match {cloneNotice.sourceMatchId}
+                  </div>
+                </div>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-200/90">
+                  {cloneNotice.detail}
+                </p>
+              </section>
+            ) : null}
 
             <ScenarioSelector
               scenarios={SCENARIOS}
@@ -507,6 +653,14 @@ export default function Home() {
                       <ExternalLink className="h-4 w-4" />
                       Open War Room
                     </Link>
+
+                    <Link
+                      href="/scenarios"
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-4 py-2 text-sm font-medium text-emerald-50 transition hover:bg-emerald-300/15"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Scenario Library
+                    </Link>
                   </div>
 
                   <p className="mt-4 text-sm leading-6 text-emerald-50/80">
@@ -520,5 +674,25 @@ export default function Home() {
         </section>
       </div>
     </main>
+  );
+}
+
+function HomePageFallback() {
+  return (
+    <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-7xl">
+        <div className="rounded-[32px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-8 text-slate-200 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          Loading setup...
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<HomePageFallback />}>
+      <HomeContent />
+    </Suspense>
   );
 }

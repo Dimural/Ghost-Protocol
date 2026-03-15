@@ -52,3 +52,49 @@ export const SCENARIOS: ScenarioDefinition[] = [
 ];
 
 export const DEFAULT_SCENARIO_ID = SCENARIOS[0].id;
+
+export function getScenarioById(
+  scenarioId: string | null | undefined,
+): ScenarioDefinition | null {
+  if (!scenarioId) {
+    return null;
+  }
+
+  return SCENARIOS.find((scenario) => scenario.id === scenarioId) ?? null;
+}
+
+export function findScenarioByName(
+  scenarioName: string | null | undefined,
+): ScenarioDefinition | null {
+  if (!scenarioName) {
+    return null;
+  }
+
+  return SCENARIOS.find((scenario) => scenario.name === scenarioName) ?? null;
+}
+
+export function inferScenarioFromMatchConfig(input: {
+  scenarioName?: string | null;
+  criminalPersona?: CriminalPersona | null;
+  totalRounds?: number | null;
+}): ScenarioDefinition | null {
+  const byName = findScenarioByName(input.scenarioName);
+  if (byName) {
+    return byName;
+  }
+
+  const byPersonaAndRounds = SCENARIOS.find(
+    (scenario) =>
+      scenario.criminalPersona === input.criminalPersona &&
+      scenario.totalRounds === input.totalRounds,
+  );
+  if (byPersonaAndRounds) {
+    return byPersonaAndRounds;
+  }
+
+  return (
+    SCENARIOS.find(
+      (scenario) => scenario.criminalPersona === input.criminalPersona,
+    ) ?? null
+  );
+}

@@ -64,6 +64,7 @@ export type MatchStateSummary = {
   share_url?: string | null;
   current_round?: number;
   total_rounds?: number;
+  expires_at?: string | null;
 };
 
 export type AttackRoundResponse = {
@@ -91,6 +92,8 @@ export type MatchStateResponse = {
   share_url?: string | null;
   expires_at?: string | null;
   criminal_persona?: CriminalPersona | null;
+  defender_id?: string | null;
+  defender_mode?: "webhook" | "police_ai" | null;
   target_persona_id?: string | null;
   latest_notification?: AttackerAdaptingMessage | null;
   updated_at: string;

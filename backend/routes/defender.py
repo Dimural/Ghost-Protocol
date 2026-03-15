@@ -21,6 +21,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import AnyHttpUrl, BaseModel, Field, TypeAdapter, ValidationError, model_validator
 
 from backend.config import REDIS_URL
+from backend.core.match_state import MATCH_STATE_STORE, is_match_expired
 from backend.core.dispatcher import DispatchErrorEvent, get_defender_errors
 from backend.data.models import DefenderDecision, TransactionType
 
@@ -189,6 +190,15 @@ async def register_defender(
     request: RegisterDefenderRequest,
 ) -> RegisterDefenderResponse:
     now = _timestamp()
+    existing_match = MATCH_STATE_STORE.load(request.match_id)
+    if existing_match is not None and is_match_expired(existing_match):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Match '{request.match_id}' has expired and is now archived. "
+                "Archived matches are read-only."
+            ),
+        )
     defender_id = f"defender_{uuid.uuid4().hex[:12]}"
 
     if request.use_police_ai:
@@ -200,6 +210,12 @@ async def register_defender(
             updated_at=now,
         )
         _DEFENDER_STORE.save(registration)
+        _sync_match_defender_registration(
+            match_id=request.match_id,
+            defender_id=registration.defender_id,
+            defender_mode=registration.mode,
+            updated_at=now,
+        )
         return RegisterDefenderResponse(defender_id=registration.defender_id)
 
     webhook_url = str(request.webhook_url)
@@ -221,6 +237,12 @@ async def register_defender(
         updated_at=now,
     )
     _DEFENDER_STORE.save(registration)
+    _sync_match_defender_registration(
+        match_id=request.match_id,
+        defender_id=registration.defender_id,
+        defender_mode=registration.mode,
+        updated_at=now,
+    )
 
     return RegisterDefenderResponse(defender_id=registration.defender_id)
 
@@ -354,3 +376,24 @@ def _build_dummy_transaction_payload(match_id: str) -> dict[str, object]:
 
 def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _sync_match_defender_registration(
+    match_id: str,
+    defender_id: str,
+    defender_mode: Literal["webhook", "police_ai"],
+    updated_at: str,
+) -> None:
+    match_state = MATCH_STATE_STORE.load(match_id)
+    if match_state is None:
+        return
+
+    MATCH_STATE_STORE.save(
+        match_state.model_copy(
+            update={
+                "defender_id": defender_id,
+                "defender_mode": defender_mode,
+                "updated_at": updated_at,
+            }
+        )
+    )

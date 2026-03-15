@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -23,10 +23,34 @@ from backend.data.models import DefenderDecision, Transaction
 MatchStatus = Literal["setup", "running", "paused", "complete"]
 CriminalPersona = Literal["amateur", "patient", "botnet"]
 DefenderMode = Literal["webhook", "police_ai"]
+MATCH_EXPIRY_HOURS = 24
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def parse_utc_timestamp(value: str) -> datetime:
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def calculate_match_expiry(created_at: str | None = None) -> str:
+    base_time = parse_utc_timestamp(created_at) if created_at else datetime.now(timezone.utc)
+    return (base_time + timedelta(hours=MATCH_EXPIRY_HOURS)).isoformat()
+
+
+def is_expired_timestamp(expires_at: str | None) -> bool:
+    if not expires_at:
+        return False
+    return parse_utc_timestamp(expires_at) <= datetime.now(timezone.utc)
+
+
+def is_match_expired(match_state: "MatchState") -> bool:
+    return is_expired_timestamp(match_state.expires_at)
 
 
 class AdaptationNotification(BaseModel):
@@ -95,7 +119,7 @@ class MatchStateStore:
         payload = state.model_dump(mode="json")
         if self._redis_client is not None:
             try:
-                self._redis_client.set(self._redis_key(state.match_id), json.dumps(payload), ex=86400)
+                self._redis_client.set(self._redis_key(state.match_id), json.dumps(payload))
                 return
             except redis.RedisError:
                 self._redis_client = None

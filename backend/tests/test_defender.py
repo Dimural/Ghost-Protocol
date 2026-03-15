@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from backend.agents.police_agent import PoliceAgent
 from backend.core.dispatcher import _ERROR_STORE, clear_defender_errors
+from backend.core.match_state import MATCH_STATE_STORE, MatchState
 from backend.core.dispatcher import WebhookDispatcher
 from backend.data.models import DefenderDecision
 from backend.data.models import Transaction, TransactionType
@@ -24,6 +25,8 @@ def isolate_defender_store(tmp_path, monkeypatch):
     monkeypatch.setattr(_DEFENDER_STORE, "_redis_client", None)
     monkeypatch.setattr(_ERROR_STORE, "_fallback_path", tmp_path / "defender-errors.json")
     monkeypatch.setattr(_ERROR_STORE, "_redis_client", None)
+    monkeypatch.setattr(MATCH_STATE_STORE, "_fallback_path", tmp_path / "matches.json")
+    monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", None)
     clear_defender_errors("match-123")
     clear_defender_errors("match-124")
     clear_defender_errors("match-125")
@@ -86,6 +89,37 @@ def test_register_defender_tests_and_persists_webhook(monkeypatch):
     assert registration.webhook_url == "http://localhost:9000/score"
     assert registration.last_test_decision is not None
     assert registration.last_test_decision.decision == "APPROVE"
+
+
+def test_register_defender_syncs_canonical_match_state(monkeypatch):
+    MATCH_STATE_STORE.save(MatchState(match_id="match-state-sync", status="setup"))
+
+    async def fake_probe(_webhook_url: str, payload: dict[str, object]) -> DefenderDecision:
+        return DefenderDecision(
+            transaction_id=str(payload["transaction_id"]),
+            decision="APPROVE",
+            confidence=0.99,
+            reason="registration test accepted",
+        )
+
+    monkeypatch.setattr("backend.routes.defender._probe_defender_webhook", fake_probe)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/defender/register",
+        json={
+            "match_id": "match-state-sync",
+            "webhook_url": "http://localhost:9000/score",
+            "use_police_ai": False,
+        },
+    )
+
+    assert response.status_code == 200
+
+    synced_match = MATCH_STATE_STORE.load("match-state-sync")
+    assert synced_match is not None
+    assert synced_match.defender_mode == "webhook"
+    assert synced_match.defender_id == response.json()["defender_id"]
 
 
 def test_register_defender_rejects_invalid_webhook_url():
@@ -160,6 +194,26 @@ def test_register_defender_supports_police_ai_with_empty_webhook_url():
     assert registration is not None
     assert registration.mode == "police_ai"
     assert registration.webhook_url is None
+
+
+def test_register_defender_rejects_expired_match():
+    MATCH_STATE_STORE.save(
+        MatchState(
+            match_id="match-expired",
+            scenario_name="Archived Match",
+            status="complete",
+            expires_at=(datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
+        )
+    )
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/defender/register",
+        json={"match_id": "match-expired", "use_police_ai": True},
+    )
+
+    assert response.status_code == 409
+    assert "archived" in response.json()["detail"].lower()
 
 
 def test_defender_test_endpoint_returns_raw_response(monkeypatch):

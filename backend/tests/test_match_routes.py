@@ -1,10 +1,12 @@
 """Unit tests for Ghost Protocol match management routes."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi.testclient import TestClient
 import pytest
 
-from backend.core.match_state import MATCH_STATE_STORE
+from backend.core.match_state import MATCH_STATE_STORE, MatchState
 from backend.main import app
 
 
@@ -48,6 +50,7 @@ def test_create_start_and_get_match_routes():
     assert get_payload["match_id"] == create_payload["match_id"]
     assert get_payload["status"] == "running"
     assert get_payload["share_url"] == create_payload["share_url"]
+    assert get_payload["expires_at"] is not None
 
 
 def test_pause_and_reset_keep_match_configuration():
@@ -103,3 +106,31 @@ def test_match_routes_return_404_for_missing_match():
 
     reset_response = client.post("/api/match/missing-match/reset")
     assert reset_response.status_code == 404
+
+
+def test_expired_matches_are_read_only_but_still_viewable():
+    expired_at = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    MATCH_STATE_STORE.save(
+        MatchState(
+            match_id="expired-match",
+            scenario_name="Archived Match",
+            status="paused",
+            expires_at=expired_at,
+        )
+    )
+
+    client = TestClient(app)
+
+    get_response = client.get("/api/match/expired-match")
+    assert get_response.status_code == 200
+    assert get_response.json()["expires_at"] == expired_at
+
+    start_response = client.post("/api/match/expired-match/start")
+    assert start_response.status_code == 409
+    assert "archived" in start_response.json()["detail"].lower()
+
+    pause_response = client.post("/api/match/expired-match/pause")
+    assert pause_response.status_code == 409
+
+    reset_response = client.post("/api/match/expired-match/reset")
+    assert reset_response.status_code == 409

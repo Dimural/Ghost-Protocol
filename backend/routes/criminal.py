@@ -20,6 +20,7 @@ from backend.core.match_state import (
     AdaptationNotification,
     MATCH_STATE_STORE,
     MatchState,
+    is_match_expired,
     utc_now,
 )
 from backend.data.generator import load_personas
@@ -72,6 +73,14 @@ class AdaptAttackResponse(BaseModel):
 @router.post("/generate", response_model=GenerateAttackResponse)
 async def generate_attack(request: GenerateAttackRequest) -> GenerateAttackResponse:
     existing_state = MATCH_STATE_STORE.load(request.match_id)
+    if existing_state is not None and is_match_expired(existing_state):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Match '{request.match_id}' has expired and is now archived. "
+                "Archived matches are read-only."
+            ),
+        )
     target_persona = _resolve_target_persona(request.match_id, request.target_persona_id, existing_state)
     known_defender_rules = request.known_defender_rules or (
         existing_state.known_defender_rules if existing_state else []
@@ -135,6 +144,14 @@ async def adapt_attack(request: AdaptAttackRequest) -> AdaptAttackResponse:
         raise HTTPException(
             status_code=404,
             detail="No stored criminal state found for this match. Generate attacks first.",
+        )
+    if is_match_expired(state):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Match '{request.match_id}' has expired and is now archived. "
+                "Archived matches are read-only."
+            ),
         )
 
     if state.criminal_persona is None:

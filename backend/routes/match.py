@@ -11,7 +11,13 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.core.match_state import MATCH_STATE_STORE, MatchState, utc_now
+from backend.core.match_state import (
+    MATCH_STATE_STORE,
+    MatchState,
+    calculate_match_expiry,
+    is_match_expired,
+    utc_now,
+)
 from backend.core.referee import MatchScore
 
 router = APIRouter(prefix="/api/match", tags=["match"])
@@ -36,6 +42,19 @@ def _require_match(match_id: str) -> MatchState:
     return match_state
 
 
+def _require_modifiable_match(match_id: str) -> MatchState:
+    match_state = _require_match(match_id)
+    if is_match_expired(match_state):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Match '{match_id}' has expired and is now archived. "
+                "Archived matches are read-only."
+            ),
+        )
+    return match_state
+
+
 @router.post("/create", response_model=CreateMatchResponse)
 async def create_match(request: CreateMatchRequest) -> CreateMatchResponse:
     match_id = uuid.uuid4().hex
@@ -54,7 +73,7 @@ async def create_match(request: CreateMatchRequest) -> CreateMatchResponse:
         started_at=timestamp,
         ended_at=None,
         share_url=share_url,
-        expires_at=None,
+        expires_at=calculate_match_expiry(timestamp),
         criminal_persona=request.criminal_persona,
         updated_at=timestamp,
     )
@@ -74,7 +93,7 @@ async def get_match(match_id: str) -> MatchState:
 
 @router.post("/{match_id}/start", response_model=MatchState)
 async def start_match(match_id: str) -> MatchState:
-    state = _require_match(match_id)
+    state = _require_modifiable_match(match_id)
     timestamp = utc_now()
     updated_state = state.model_copy(
         update={
@@ -90,7 +109,7 @@ async def start_match(match_id: str) -> MatchState:
 
 @router.post("/{match_id}/pause", response_model=MatchState)
 async def pause_match(match_id: str) -> MatchState:
-    state = _require_match(match_id)
+    state = _require_modifiable_match(match_id)
     updated_state = state.model_copy(
         update={
             "status": "paused",
@@ -103,7 +122,7 @@ async def pause_match(match_id: str) -> MatchState:
 
 @router.post("/{match_id}/reset", response_model=MatchState)
 async def reset_match(match_id: str) -> MatchState:
-    state = _require_match(match_id)
+    state = _require_modifiable_match(match_id)
     timestamp = utc_now()
     updated_state = state.model_copy(
         update={

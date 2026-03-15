@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 import pytest
@@ -25,6 +25,7 @@ def isolate_match_state_store(tmp_path, monkeypatch):
     MATCH_STATE_STORE.delete("match-legacy")
     MATCH_STATE_STORE.delete("match-criminal")
     MATCH_STATE_STORE.delete("match-adapt")
+    MATCH_STATE_STORE.delete("match-expired-criminal")
 
 
 def _transaction(tx_id: str, amount: float, *, is_fraud: bool) -> Transaction:
@@ -212,3 +213,58 @@ def test_adapt_attack_appends_next_round_into_match_state():
     assert len(state.transactions) == 6
     assert state.latest_notification is not None
     assert state.latest_notification.round == 2
+
+
+def test_expired_match_blocks_attack_generation_and_adaptation():
+    expired_at = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    MATCH_STATE_STORE.save(
+        MatchState(
+            match_id="match-expired-criminal",
+            scenario_name="Archived Match",
+            status="complete",
+            expires_at=expired_at,
+            criminal_persona="patient",
+        )
+    )
+
+    client = TestClient(app)
+
+    generate_response = client.post(
+        "/api/attack/generate",
+        json={
+            "match_id": "match-expired-criminal",
+            "persona": "patient",
+            "count": 4,
+            "total_rounds": 3,
+        },
+    )
+    assert generate_response.status_code == 409
+    assert "archived" in generate_response.json()["detail"].lower()
+
+    expired_state = MATCH_STATE_STORE.load("match-expired-criminal")
+    assert expired_state is not None
+    expired_state = expired_state.model_copy(
+        update={
+            "status": "running",
+            "current_round": 1,
+            "transactions": [_transaction("expired-attack", 49.0, is_fraud=True)],
+            "attack_rounds": [
+                AttackRound(
+                    round=1,
+                    attacks=[_transaction("expired-attack", 49.0, is_fraud=True)],
+                    strategy_notes="Seeded archived attack wave",
+                )
+            ],
+        }
+    )
+    MATCH_STATE_STORE.save(expired_state)
+
+    adapt_response = client.post(
+        "/api/attack/adapt",
+        json={
+            "match_id": "match-expired-criminal",
+            "caught_ids": ["expired-attack"],
+        },
+    )
+    assert adapt_response.status_code == 409
+    assert "archived" in adapt_response.json()["detail"].lower()
