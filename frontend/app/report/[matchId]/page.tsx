@@ -67,21 +67,24 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   if (isLoading) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-7xl">
-          <div className="app-panel p-8 text-slate-200">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content">
+            <div className="app-panel p-8 text-slate-200">
             Loading report for match {matchId}...
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
 
   if (errorMessage || !match || !report) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-4xl">
-          <div className="app-panel p-8">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content max-w-4xl">
+            <div className="app-panel p-8">
             <div className="flex items-center gap-3 text-rose-100">
               <ShieldAlert className="h-6 w-6" />
               <h1 className="text-2xl font-semibold">Report unavailable</h1>
@@ -93,26 +96,27 @@ export default function ReportPage({ params }: ReportPageProps) {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href={`/match/${matchId}`}
-                className="app-button app-button-danger"
+                className="landing-button landing-button-secondary"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to War Room
               </Link>
               <Link
                 href="/"
-                className="app-button app-button-secondary"
+                className="landing-button landing-button-secondary"
               >
                 Return to setup
               </Link>
             </div>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="app-page">
+    <main className="experience-shell">
       <ReportView
         matchId={matchId}
         match={match}

@@ -43,8 +43,7 @@ function getRiskBand(threatLevel: number): RiskBand {
       label: "BREACH IN PROGRESS",
       description: "Missed fraud is overwhelming the defender.",
       color: "#ff3b3b",
-      panelClassName:
-        "border-[rgba(219,138,138,0.24)] bg-[rgba(219,138,138,0.08)]",
+      panelClassName: "bg-[rgba(255,255,255,0.04)]",
       badgeClassName:
         "app-chip app-chip-danger risk-meter-breach",
     };
@@ -55,8 +54,7 @@ function getRiskBand(threatLevel: number): RiskBand {
       label: "Under Attack",
       description: "Missed fraud is compounding fast enough to threaten the match.",
       color: "#fb923c",
-      panelClassName:
-        "border-[rgba(207,176,122,0.24)] bg-[rgba(207,176,122,0.08)]",
+      panelClassName: "bg-[rgba(255,255,255,0.04)]",
       badgeClassName:
         "app-chip app-chip-warning",
     };
@@ -67,19 +65,17 @@ function getRiskBand(threatLevel: number): RiskBand {
       label: "Anomalies Detected",
       description: "The defender is leaking suspicious traffic, but the breach is not runaway yet.",
       color: "#ffd700",
-      panelClassName:
-        "border-[rgba(207,176,122,0.24)] bg-[rgba(207,176,122,0.08)]",
+      panelClassName: "bg-[rgba(255,255,255,0.04)]",
       badgeClassName:
         "app-chip app-chip-warning",
     };
   }
 
   return {
-    label: "System Secure",
-    description: "Most processed fraud is being contained before it gets through.",
-    color: "#00ff88",
-    panelClassName:
-      "border-[rgba(143,199,173,0.22)] bg-[rgba(143,199,173,0.07)]",
+      label: "System Secure",
+      description: "Most processed fraud is being contained before it gets through.",
+      color: "#00ff88",
+      panelClassName: "bg-[rgba(255,255,255,0.04)]",
     badgeClassName:
       "app-chip app-chip-success",
   };
@@ -145,17 +141,18 @@ export function RiskMeter({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="app-kicker">Right Panel</p>
+          <p className="text-xs uppercase tracking-[0.32em] text-slate-500">
+            Section Threat
+          </p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Real-time risk meter
           </h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-            Threat level is sampled from missed fraud versus processed fraud and
-            snaps to a new reading every 5 processed transactions.
+          <p className="mt-3 max-w-xl text-sm leading-7 text-slate-300">
+            A live signal of how much fraud is slipping through.
           </p>
         </div>
 
-        <div className="app-chip app-chip-accent rounded-full p-3">
+        <div className="landing-pill landing-pill-accent rounded-full p-3">
           <Gauge className="h-5 w-5" />
         </div>
       </div>
@@ -164,7 +161,7 @@ export function RiskMeter({
         <div className="flex justify-center">
           <div className="relative h-[19rem] w-[19rem]">
             <div
-              className="absolute inset-0 rounded-full border border-white/10 shadow-[inset_0_0_24px_rgba(255,255,255,0.03)]"
+              className="absolute inset-0 rounded-full shadow-[inset_0_0_24px_rgba(255,255,255,0.03)]"
               style={gaugeFaceStyle}
             />
 
@@ -193,7 +190,7 @@ export function RiskMeter({
               />
             </svg>
 
-            <div className="absolute inset-[22%] rounded-full border border-white/10 bg-[rgba(12,14,19,0.92)] shadow-[inset_0_0_18px_rgba(255,255,255,0.02)]" />
+            <div className="absolute inset-[22%] rounded-full bg-[rgba(12,14,19,0.92)] shadow-[inset_0_0_18px_rgba(255,255,255,0.02)]" />
 
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
@@ -207,9 +204,7 @@ export function RiskMeter({
                   /100
                 </span>
               </div>
-              <div
-                className={`mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] ${riskBand.badgeClassName}`}
-              >
+              <div className={`mt-4 ${riskBand.badgeClassName}`}>
                 {displayedThreatLevel >= 81 ? (
                   <Siren className="h-3.5 w-3.5" />
                 ) : displayedThreatLevel >= 31 ? (
@@ -237,7 +232,7 @@ export function RiskMeter({
               {riskBand.description}
             </p>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              Formula: <span className="font-mono text-slate-200">false_negatives / total_fraud_transactions</span>
+              Updates as the match unfolds.
             </p>
           </div>
 
@@ -269,10 +264,10 @@ export function RiskMeter({
             </p>
             <p className="mt-3 text-sm leading-6 text-slate-400">
               {processedCount === 0
-                ? "Waiting for the first defender decisions before the gauge starts moving."
+                ? "Waiting for the first decisions."
                 : holdCount === 0
-                  ? `Checkpoint reached. Next live refresh will happen at ${nextCheckpoint} processed transactions.`
-                  : `Holding this reading for ${holdCount} more processed transaction${holdCount === 1 ? "" : "s"} until checkpoint ${nextCheckpoint}.`}
+                  ? `Next refresh at ${nextCheckpoint} processed transactions.`
+                  : `Holding for ${holdCount} more transaction${holdCount === 1 ? "" : "s"}.`}
             </p>
           </div>
         </div>

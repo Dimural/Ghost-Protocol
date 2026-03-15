@@ -28,7 +28,6 @@ import {
   startMatch,
   testDefenderConnection,
 } from "@/lib/api";
-import { getBackendBaseUrl } from "@/lib/config";
 import {
   copyTextToClipboard,
   getTrackedMatch,
@@ -69,8 +68,7 @@ type CloneNotice =
 const READY_STATUS: ConnectionStatus = {
   state: "ready",
   label: "Ready",
-  detail:
-    "Police AI is armed and ready to defend in mock mode with automatic live activation once a Groq key exists.",
+  detail: "Police AI is ready.",
 };
 
 const AWAITING_WEBHOOK_STATUS: ConnectionStatus = {
@@ -114,7 +112,7 @@ const HOW_IT_WORKS = [
   {
     title: "3. Watch the referee",
     description:
-      "The backend tracks every decision, every miss, and every adaptation for the live War Room.",
+      "See every catch, miss, and shift in the live War Room.",
     icon: Radar,
   },
 ] as const;
@@ -149,8 +147,6 @@ function HomeContent() {
     SCENARIOS[0];
   const canLaunch =
     defenderMode === "police_ai" || connectionStatus.state === "success";
-  const backendBaseUrl = getBackendBaseUrl();
-
   useEffect(() => {
     if (!cloneMatchId) {
       lastAppliedCloneId.current = null;
@@ -378,14 +374,15 @@ function HomeContent() {
                 <p className="text-xs uppercase tracking-[0.38em] text-slate-500">
                   Black-box pressure testing for fraud teams
                 </p>
-                <h1 className="mt-6 max-w-5xl text-6xl font-semibold leading-[0.92] tracking-[-0.05em] text-white sm:text-7xl lg:text-[7.5rem]">
-                  Fraud defense is only real when the attacker evolves.
+                <h1 className="mt-6 max-w-5xl text-6xl font-semibold leading-[0.9] tracking-[-0.06em] text-white sm:text-7xl lg:text-[8rem]">
+                  Ghost Protocol
                 </h1>
-                <p className="mt-8 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
+                <p className="mt-6 max-w-3xl text-2xl font-medium leading-[1.25] tracking-[-0.03em] text-slate-100 sm:text-3xl">
+                  Adversarial fraud simulation for teams that want to test under pressure.
+                </p>
+                <p className="mt-6 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
                   Run a synthetic heist, route transactions into your detector,
-                  and watch Ghost Protocol score every catch, miss, and blind
-                  spot in a controlled sandbox designed for live adversarial
-                  testing.
+                  and review what breaks before it matters.
                 </p>
 
                 <div className="mt-10 flex flex-wrap gap-3">
@@ -407,26 +404,26 @@ function HomeContent() {
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="app-subpanel p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-                      Active backend
+                      Environment
                     </p>
-                    <p className="mt-2 break-all text-sm font-medium text-white">
-                      {backendBaseUrl}
+                    <p className="mt-2 text-sm font-medium text-white">
+                      Private Simulation Grid
                     </p>
                   </div>
                   <div className="app-subpanel p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-                      Runtime path
+                      Decisioning
                     </p>
                     <p className="mt-2 text-sm font-medium text-white">
-                      Groq live with automatic mock fallback
+                      Live adaptive analysis
                     </p>
                   </div>
                   <div className="app-subpanel p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-                      Match engine
+                      Coverage
                     </p>
                     <p className="mt-2 text-sm font-medium text-white">
-                      Native Ghost Protocol sandbox
+                      End-to-end attack simulation
                     </p>
                   </div>
                 </div>
@@ -448,14 +445,12 @@ function HomeContent() {
               <p className="text-xs uppercase tracking-[0.36em] text-slate-500">
                 Section 01
               </p>
-              <h2 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                Build the heist before you pull the trigger.
-              </h2>
-              <p className="mt-5 max-w-xl text-base leading-8 text-slate-300">
-                Configure the attack profile, choose the defender path, and
-                keep the entire flow on a single scroll narrative instead of a
-                compressed dashboard block.
-              </p>
+                  <h2 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+                Shape the attack before it starts.
+                  </h2>
+                  <p className="mt-5 max-w-xl text-base leading-8 text-slate-300">
+                Choose the scenario, set the defender, and prepare the run in a cleaner sequence.
+                  </p>
             </div>
 
             <section className="app-panel p-6">
@@ -554,14 +549,12 @@ function HomeContent() {
               <p className="text-xs uppercase tracking-[0.36em] text-slate-500">
                 Section 02
               </p>
-              <h2 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                Launch once the defender path is clean.
-              </h2>
-              <p className="mt-5 max-w-xl text-base leading-8 text-slate-300">
-                This final section turns configuration into a live match, gives
-                you the owner share link, and keeps the launch state visible in
-                one dedicated stage.
-              </p>
+                  <h2 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+                Launch when the setup feels right.
+                  </h2>
+                  <p className="mt-5 max-w-xl text-base leading-8 text-slate-300">
+                Start the match, open the War Room, and share the run from one final stage.
+                  </p>
             </div>
 
             <section className="app-panel p-6">
@@ -576,7 +569,7 @@ function HomeContent() {
                 </div>
                 <div className="landing-pill landing-pill-accent">
                   <Radar className="h-3.5 w-3.5" />
-                  {canLaunch ? "Ready to arm" : "Waiting on defender"}
+                  {canLaunch ? "Ready" : "Waiting"}
                 </div>
               </div>
 
@@ -594,7 +587,7 @@ function HomeContent() {
                     Defender mode
                   </dt>
                   <dd className="mt-2 text-base font-medium text-white">
-                    {defenderMode === "police_ai" ? "Police AI" : "Webhook API"}
+                      {defenderMode === "police_ai" ? "Police AI" : "Custom API"}
                   </dd>
                 </div>
                 <div className="app-subpanel p-4">
@@ -634,9 +627,7 @@ function HomeContent() {
               </h2>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-                Launch stays locked until Ghost Protocol has a configured
-                defender path. Police AI is immediately ready. Custom webhook
-                mode requires a successful connectivity test first.
+                Police AI is ready immediately. Custom API mode requires a successful connection test first.
               </p>
 
               <button
@@ -675,7 +666,7 @@ function HomeContent() {
 
                   <div className="landing-pill">
                     <Share2 className="h-3.5 w-3.5" />
-                    Owner view
+                    Primary view
                   </div>
                 </div>
 
@@ -746,8 +737,7 @@ function HomeContent() {
                 </div>
 
                 <p className="mt-5 text-sm leading-6 text-slate-300">
-                  Anyone opening this share link from a different browser or
-                  device gets a read-only match view.
+                  Share the live room instantly.
                 </p>
               </div>
             ) : null}

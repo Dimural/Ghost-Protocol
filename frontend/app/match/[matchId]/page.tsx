@@ -302,21 +302,24 @@ export default function MatchPage({ params }: MatchPageProps) {
 
   if (isLoading) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-7xl">
-          <div className="app-panel p-8 text-slate-200">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content">
+            <div className="app-panel p-8 text-slate-200">
             Loading match {matchId}...
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
 
   if (errorMessage || !match) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-4xl">
-          <div className="app-panel border-[rgba(219,138,138,0.24)] bg-[rgba(219,138,138,0.11)] p-8">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content max-w-4xl">
+            <div className="app-panel bg-[rgba(219,138,138,0.11)] p-8">
             <div className="flex items-center gap-3 text-rose-100">
               <ShieldAlert className="h-6 w-6" />
               <h1 className="text-2xl font-semibold">Match unavailable</h1>
@@ -331,8 +334,9 @@ export default function MatchPage({ params }: MatchPageProps) {
               <ArrowLeft className="h-4 w-4" />
               Back to setup
             </Link>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
@@ -344,11 +348,20 @@ export default function MatchPage({ params }: MatchPageProps) {
   const isOwnerView = viewMode === "owner";
 
   return (
-    <main className="app-page">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <section className="app-hero p-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
+    <main className="experience-shell">
+      <section className="experience-section">
+        <div className="experience-content">
+          <section className="app-hero relative overflow-hidden p-10 sm:p-12">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-[-10%] bottom-[-8%] h-56 bg-[radial-gradient(circle_at_center,rgba(214,255,87,0.24),transparent_58%)] blur-3xl"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute right-[-6%] top-[14%] h-40 w-40 rounded-full bg-[rgba(214,255,87,0.12)] blur-3xl"
+            />
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
+            <div className="max-w-3xl">
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
@@ -356,11 +369,11 @@ export default function MatchPage({ params }: MatchPageProps) {
                 <ArrowLeft className="h-4 w-4" />
                 Back to setup
               </Link>
-              <div className="mt-4 flex flex-wrap gap-3">
+              <div className="mt-5 flex flex-wrap gap-3">
                 {match.status === "complete" || match.report_id ? (
                   <Link
                     href={`/report/${matchId}`}
-                    className="app-button app-button-success"
+                    className="landing-button"
                   >
                     <FileText className="h-4 w-4" />
                     View post-game report
@@ -368,7 +381,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                 ) : null}
                 <Link
                   href={`/replay/${matchId}`}
-                  className="app-button app-button-secondary"
+                  className="landing-button landing-button-secondary"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Open Heist Replay
@@ -377,7 +390,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                   <button
                     type="button"
                     onClick={handleCopyShareLink}
-                    className="app-button"
+                    className="landing-button landing-button-secondary"
                   >
                     <Copy className="h-4 w-4" />
                     {shareCopyState === "copied"
@@ -388,21 +401,20 @@ export default function MatchPage({ params }: MatchPageProps) {
                   </button>
                 ) : null}
               </div>
-              <p className="app-kicker mt-5">War Room</p>
-              <h1 className="mt-2 text-4xl font-semibold text-slate-50">
+              <p className="text-xs uppercase tracking-[0.34em] text-slate-500">
+                War Room
+              </p>
+              <h1 className="mt-3 text-5xl font-semibold tracking-[-0.04em] text-slate-50 sm:text-6xl">
                 {match.scenario_name}
               </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                Match <span className="font-mono text-slate-200">{matchId}</span>{" "}
-                is live in the War Room with the transaction feed, threat gauge,
-                scoreboard, world map, and attacker-learning banner all driven
-                from the same websocket event stream.
+              <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
+                Live simulation, scored in real time.
               </p>
               <div
-                className={`mt-5 ${
+                className={`mt-6 ${
                   isOwnerView
-                    ? "app-chip app-chip-success"
-                    : "app-chip app-chip-warning"
+                    ? "landing-pill landing-pill-accent"
+                    : "landing-pill"
                 }`}
               >
                 {isOwnerView ? (
@@ -410,19 +422,14 @@ export default function MatchPage({ params }: MatchPageProps) {
                 ) : (
                   <Lock className="h-3.5 w-3.5" />
                 )}
-                {isOwnerView ? "Owner view" : "Shared read-only view"}
+                {isOwnerView ? "Primary access" : "Shared access"}
               </div>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                {isOwnerView
-                  ? "This browser launched the match, so it is treated as the owner view."
-                  : "This browser did not launch the match. The dashboard remains view-only and safe to share."}
-              </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-4 self-start sm:grid-cols-3">
               <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                  Match Status
+                  Status
                 </p>
                 <p className="mt-2 text-xl font-semibold capitalize text-slate-50">
                   {match.status}
@@ -430,7 +437,7 @@ export default function MatchPage({ params }: MatchPageProps) {
               </div>
               <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                  WebSocket
+                  Connection
                 </p>
                 <p className="mt-2 text-xl font-semibold capitalize text-slate-50">
                   {connectionState}
@@ -438,52 +445,63 @@ export default function MatchPage({ params }: MatchPageProps) {
               </div>
               <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                  View Mode
+                  Access
                 </p>
                 <p className="mt-2 text-xl font-semibold text-slate-50">
-                  {isOwnerView ? "Owner" : "Read-only"}
+                  {isOwnerView ? "Primary" : "Shared"}
                 </p>
               </div>
             </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      {activeBanner ? (
+        <section className="experience-section experience-section-tight">
+          <div className="experience-content">
+            <AdaptationBanner
+              key={`${activeBanner.round}-${activeBanner.created_at}`}
+              notification={activeBanner}
+              connectionState={connectionState}
+              onDismiss={() => setActiveBanner(null)}
+            />
           </div>
         </section>
+      ) : null}
 
-        {activeBanner ? (
-          <AdaptationBanner
-            key={`${activeBanner.round}-${activeBanner.created_at}`}
-            notification={activeBanner}
+      <section className="experience-section">
+        <div className="experience-content">
+          <TransactionFeed
+            entries={feedEntries}
+            processedCount={processedCount}
             connectionState={connectionState}
-            onDismiss={() => setActiveBanner(null)}
           />
-        ) : null}
-
-        <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr]">
-          <div className="space-y-8">
-            <TransactionFeed
-              entries={feedEntries}
-              processedCount={processedCount}
-              connectionState={connectionState}
-            />
-          </div>
-
-          <div className="space-y-8">
-            <RiskMeter
-              processedCount={processedCount}
-              processedFraudCount={processedFraudCount}
-              falseNegatives={match.score.false_negatives}
-            />
-
-            <Scoreboard
-              score={match.score}
-              currentRound={displayRound}
-              totalRounds={match.total_rounds}
-              status={match.status}
-            />
-
-            <TransactionMap entries={feedEntries} />
-          </div>
         </div>
-      </div>
+      </section>
+
+      <section className="experience-section">
+        <div className="experience-content space-y-8">
+          <RiskMeter
+            processedCount={processedCount}
+            processedFraudCount={processedFraudCount}
+            falseNegatives={match.score.false_negatives}
+          />
+
+          <Scoreboard
+            score={match.score}
+            currentRound={displayRound}
+            totalRounds={match.total_rounds}
+            status={match.status}
+          />
+        </div>
+      </section>
+
+      <section className="experience-section">
+        <div className="experience-content">
+          <TransactionMap entries={feedEntries} />
+        </div>
+      </section>
     </main>
   );
 }

@@ -258,25 +258,25 @@ export function TransactionMap({ entries }: TransactionMapProps) {
     <section className="app-panel p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="app-kicker">World Map</p>
+          <p className="text-xs uppercase tracking-[0.32em] text-slate-500">
+            Section World
+          </p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Transaction origin routes
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-            Each processed transaction draws a route from its origin into
-            Toronto. Legitimate and fraudulent traffic are separated with
-            subdued route styling so location patterns stay legible.
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+            A clean view of where activity is coming from.
           </p>
         </div>
 
-        <div className="app-chip app-chip-accent rounded-full p-3">
+        <div className="landing-pill landing-pill-accent rounded-full p-3">
           <Globe2 className="h-5 w-5" />
         </div>
       </div>
 
       <div className="app-subpanel mt-6 p-4">
         <div className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
-          <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(13,16,22,0.94),rgba(10,12,17,0.96))] p-3">
+          <div className="overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,rgba(13,16,22,0.94),rgba(10,12,17,0.96))] p-3">
             <ComposableMap
               projection="geoEqualEarth"
               projectionConfig={{ scale: 152, center: [8, 18] }}

@@ -389,8 +389,10 @@ export function ReportView({
   const riskTone = RISK_TONES[report.risk_rating];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
-      <section className="app-hero p-8">
+    <div className="space-y-0">
+      <section className="experience-section">
+        <div className="experience-content">
+          <section className="app-hero p-10 sm:p-12">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <Link
@@ -413,21 +415,21 @@ export function ReportView({
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href={`/replay/${matchId}`}
-                className="app-button app-button-secondary"
+                className="landing-button landing-button-secondary"
               >
                 <Radar className="h-4 w-4" />
                 Open Replay
               </Link>
               <a
                 href={pdfExportUrl}
-                className="app-button"
+                className="landing-button"
               >
                 <FileText className="h-4 w-4" />
                 Export PDF
               </a>
               <a
                 href={jsonExportUrl}
-                className="app-button app-button-secondary"
+                className="landing-button landing-button-secondary"
               >
                 <FileJson className="h-4 w-4" />
                 Export JSON
@@ -470,10 +472,14 @@ export function ReportView({
               </p>
             </div>
           </div>
+          </div>
+          </section>
         </div>
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
+      <section className="experience-section">
+        <div className="experience-content">
+          <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
         <section className="app-panel p-6">
           <p className="app-kicker">Executive Summary</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
@@ -507,9 +513,13 @@ export function ReportView({
         </section>
 
         <RiskMeterCard match={match} report={report} />
-      </div>
+          </div>
+        </div>
+      </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="experience-section">
+        <div className="experience-content">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {summaryCards.map(({ label, value, tone, Icon }) => (
           <article
             key={label}
@@ -522,9 +532,9 @@ export function ReportView({
             <p className="mt-4 text-3xl font-semibold text-slate-50">{value}</p>
           </article>
         ))}
-      </section>
+          </section>
 
-      <div className="grid gap-8 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="mt-8 grid gap-8 lg:grid-cols-[0.92fr_1.08fr]">
         <section className="app-panel p-6">
           <p className="app-kicker">Attack Pattern Analysis</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
@@ -596,9 +606,12 @@ export function ReportView({
             </div>
           </dl>
         </section>
-      </div>
+          </div>
+        </div>
+      </section>
 
-      <section className="space-y-5">
+      <section className="experience-section">
+        <div className="experience-content space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="app-kicker">Security Gaps</p>
@@ -623,9 +636,11 @@ export function ReportView({
             No repeated security gaps were detected in this match.
           </section>
         )}
+        </div>
       </section>
 
-      <section className="space-y-5">
+      <section className="experience-section">
+        <div className="experience-content space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="app-kicker">Recommendations</p>
@@ -652,6 +667,7 @@ export function ReportView({
               No recommendations were generated for this match.
             </section>
           )}
+        </div>
         </div>
       </section>
     </div>

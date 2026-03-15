@@ -251,20 +251,23 @@ export default function ReplayPage({ params }: ReplayPageProps) {
 
   if (isLoading) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-6xl">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content max-w-6xl">
           <div className="app-panel p-8 text-slate-200">
             Loading replay for match {matchId}...
           </div>
-        </div>
+          </div>
+        </section>
       </main>
     );
   }
 
   if (errorMessage || !match) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-4xl">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content max-w-4xl">
           <div className="app-panel p-8">
             <div className="flex items-center gap-3 text-rose-100">
               <ShieldAlert className="h-6 w-6" />
@@ -281,7 +284,8 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               Back to setup
             </Link>
           </div>
-        </div>
+          </div>
+        </section>
       </main>
     );
   }
@@ -317,9 +321,10 @@ export default function ReplayPage({ params }: ReplayPageProps) {
 
   if (!currentStep) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-6xl space-y-8">
-          <section className="app-hero p-8">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content max-w-6xl space-y-8">
+            <section className="app-hero p-10">
             <Link
               href={`/match/${matchId}`}
               className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
@@ -336,9 +341,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               transactions for match{" "}
               <span className="font-mono text-slate-200">{matchId}</span> yet.
             </p>
-          </section>
+            </section>
 
-          <section className="app-panel p-8">
+            <section className="app-panel p-8">
             <p className="text-sm leading-7 text-slate-300">
               Once Ghost Protocol has at least one defender decision, replay
               mode will let you step forward and backward through the match,
@@ -368,8 +373,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                 Back to setup
               </Link>
             </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        </section>
       </main>
     );
   }
@@ -378,9 +384,10 @@ export default function ReplayPage({ params }: ReplayPageProps) {
   const OutcomeIcon = outcomeTone.Icon;
 
   return (
-    <main className="app-page">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <section className="app-hero p-8">
+    <main className="experience-shell">
+      <section className="experience-section">
+        <div className="experience-content space-y-8">
+          <section className="app-hero p-10 sm:p-12">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <Link
@@ -430,9 +437,13 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               </Link>
             </div>
           )}
-        </section>
+          </section>
+        </div>
+      </section>
 
-        <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+      <section className="experience-section">
+        <div className="experience-content">
+          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
           <section className="app-panel p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -707,8 +718,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               </div>
             </section>
           </div>
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

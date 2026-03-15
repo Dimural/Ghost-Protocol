@@ -93,15 +93,15 @@ const CONNECTION_BADGES: Record<
 > = {
   connecting: {
     label: "Connecting",
-    className: "border-amber-300/20 bg-amber-300/10 text-amber-100",
+    className: "landing-pill",
   },
   live: {
     label: "Live",
-    className: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+    className: "landing-pill landing-pill-accent",
   },
   offline: {
     label: "Offline",
-    className: "border-slate-300/20 bg-slate-400/10 text-slate-200",
+    className: "landing-pill",
   },
 };
 
@@ -255,19 +255,19 @@ export function TransactionFeed({
     <section className="app-panel p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="app-kicker">Left Panel</p>
+          <p className="text-xs uppercase tracking-[0.32em] text-slate-500">
+            Section Feed
+          </p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Live transaction feed
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-            Latest defender decisions appear at the top. High-risk outcomes are
-            separated with restrained status accents while older entries fade
-            back to preserve scanability.
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+            The latest decisions stay pinned at the top for fast scanning.
           </p>
         </div>
 
         <div className="space-y-3">
-          <div className={`app-chip ${connectionBadge.className}`}>
+          <div className={connectionBadge.className}>
             <span className="h-2 w-2 rounded-full bg-current" />
             {connectionBadge.label}
           </div>
@@ -284,7 +284,7 @@ export function TransactionFeed({
 
       <div className="mt-6 max-h-[calc(100vh-14rem)] min-h-[28rem] space-y-3 overflow-y-auto pr-2">
         {entries.length === 0 ? (
-          <div className="flex h-full min-h-[28rem] items-center justify-center rounded-[20px] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] px-8 text-center">
+          <div className="flex h-full min-h-[28rem] items-center justify-center rounded-[28px] bg-[rgba(255,255,255,0.03)] px-8 text-center">
             <div className="max-w-md">
               <p className="text-sm uppercase tracking-[0.24em] text-slate-500">
                 Awaiting traffic
@@ -293,9 +293,7 @@ export function TransactionFeed({
                 No processed transactions yet.
               </p>
               <p className="mt-3 text-sm leading-6 text-slate-400">
-                Once the defender starts approving or denying transactions, this
-                panel will stream the latest 50 with ground-truth reveal and
-                accuracy badges.
+                Decisions will begin appearing here as the run starts.
               </p>
             </div>
           </div>
@@ -310,11 +308,11 @@ export function TransactionFeed({
             return (
               <article
                 key={item.id}
-                className={`rounded-[20px] border border-white/10 px-4 py-4 transition ${
+                className={`rounded-[28px] px-5 py-5 transition ${
                   isFraud
-                    ? "border-l-2 border-l-rose-300 bg-[rgba(219,138,138,0.08)]"
-                    : "border-l-2 border-l-[rgba(154,182,232,0.28)] bg-[rgba(255,255,255,0.03)]"
-                } ${!item.isCorrect ? "ring-1 ring-amber-300/20" : ""}`}
+                    ? "bg-[rgba(255,255,255,0.05)]"
+                    : "bg-[rgba(255,255,255,0.03)]"
+                } ${!item.isCorrect ? "shadow-[0_0_0_1px_rgba(214,255,87,0.12)]" : ""}`}
                 style={{
                   opacity,
                   animation: buildRowAnimation(item),

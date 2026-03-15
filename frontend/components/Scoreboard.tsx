@@ -40,26 +40,26 @@ type StatCardProps = {
 const STATUS_TONES: Record<MatchStateResponse["status"], StatusTone> = {
   setup: {
     label: "Setup",
-    className: "border-cyan-300/20 bg-cyan-400/10 text-cyan-100",
-    dotClassName: "bg-cyan-300",
+    className: "landing-pill",
+    dotClassName: "bg-white/70",
     Icon: TerminalSquare,
   },
   running: {
     label: "LIVE",
-    className: "border-rose-300/20 bg-rose-400/10 text-rose-100",
-    dotClassName: "bg-rose-300 animate-pulse",
+    className: "landing-pill landing-pill-accent",
+    dotClassName: "bg-[var(--accent-signal)] animate-pulse",
     Icon: Activity,
   },
   paused: {
     label: "Paused",
-    className: "border-amber-300/20 bg-amber-300/10 text-amber-100",
-    dotClassName: "bg-amber-300",
+    className: "landing-pill",
+    dotClassName: "bg-white/70",
     Icon: PauseCircle,
   },
   complete: {
     label: "Complete",
-    className: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
-    dotClassName: "bg-emerald-300",
+    className: "landing-pill landing-pill-accent",
+    dotClassName: "bg-[var(--accent-signal)]",
     Icon: CheckCircle2,
   },
 };
@@ -156,23 +156,22 @@ export function Scoreboard({
     <section className="app-panel p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="app-kicker">Match Scoreboard</p>
+          <p className="text-xs uppercase tracking-[0.32em] text-slate-500">
+            Section Score
+          </p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Defender score stream
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-            Caught fraud, missed fraud, false alarms, and financial impact are
-            pulled directly from the live referee score.
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">
+            A live read of catches, misses, and impact.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="app-chip">
+          <div className="landing-pill">
             Round {currentRound}/{totalRounds}
           </div>
-          <div
-            className={`app-chip ${statusTone.className}`}
-          >
+          <div className={statusTone.className}>
             <span className={`h-2.5 w-2.5 rounded-full ${statusTone.dotClassName}`} />
             <StatusIcon className="h-3.5 w-3.5" />
             {statusTone.label}
@@ -186,28 +185,28 @@ export function Scoreboard({
             label="Caught"
             value={String(score.true_positives)}
             hint="True positives"
-            className="border-emerald-300/18 bg-emerald-400/[0.07]"
+            className="bg-[rgba(255,255,255,0.04)]"
             Icon={ShieldCheck}
           />
           <StatCard
             label="Missed"
             value={String(score.false_negatives)}
             hint="False negatives"
-            className="border-rose-300/18 bg-rose-400/[0.08]"
+            className="bg-[rgba(255,255,255,0.04)]"
             Icon={ShieldX}
           />
           <StatCard
             label="False Alarm"
             value={String(score.false_positives)}
             hint="Legit traffic blocked"
-            className="border-amber-300/18 bg-amber-300/[0.08]"
+            className="bg-[rgba(255,255,255,0.04)]"
             Icon={ShieldAlert}
           />
           <StatCard
             label="Lost"
             value={formatCurrency(moneyLost)}
             hint="Fraud value that slipped through"
-            className="border-cyan-300/18 bg-cyan-400/[0.07]"
+            className="bg-[rgba(255,255,255,0.04)]"
             Icon={CircleDollarSign}
           />
         </div>

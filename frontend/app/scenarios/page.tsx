@@ -196,21 +196,24 @@ export default function ScenarioLibraryPage() {
 
   if (isLoading) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-7xl">
-          <div className="app-panel p-8 text-slate-200">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content">
+            <div className="app-panel p-8 text-slate-200">
             Loading scenario library...
+            </div>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
 
   if (items.length === 0) {
     return (
-      <main className="app-page">
-        <div className="mx-auto max-w-4xl">
-          <section className="app-hero p-8">
+      <main className="experience-shell">
+        <section className="experience-section">
+          <div className="experience-content max-w-4xl">
+            <section className="app-hero p-10">
             <Link
               href="/"
               className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
@@ -229,21 +232,23 @@ export default function ScenarioLibraryPage() {
             </p>
             <Link
               href="/"
-              className="app-button mt-6"
+              className="landing-button mt-6"
             >
               <ExternalLink className="h-4 w-4" />
               Open setup
             </Link>
-          </section>
-        </div>
+            </section>
+          </div>
+        </section>
       </main>
     );
   }
 
   return (
-    <main className="app-page">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <section className="app-hero p-8">
+    <main className="experience-shell">
+      <section className="experience-section">
+        <div className="experience-content">
+          <section className="app-hero p-10 sm:p-12">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <Link
@@ -291,9 +296,12 @@ export default function ScenarioLibraryPage() {
               </div>
             </div>
           </div>
-        </section>
+          </section>
+        </div>
+      </section>
 
-        <section className="space-y-5">
+      <section className="experience-section">
+        <div className="experience-content space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="app-kicker">Completed Matches</p>
@@ -428,9 +436,11 @@ export default function ScenarioLibraryPage() {
               })}
             </div>
           )}
-        </section>
+        </div>
+      </section>
 
-        <section className="space-y-5">
+      <section className="experience-section">
+        <div className="experience-content space-y-5">
           <div>
             <p className="app-kicker">Archived Matches</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-50">
@@ -561,9 +571,11 @@ export default function ScenarioLibraryPage() {
               })}
             </div>
           )}
-        </section>
+        </div>
+      </section>
 
-        <section className="space-y-5">
+      <section className="experience-section">
+        <div className="experience-content space-y-5">
           <div>
             <p className="app-kicker">Active / Pending</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-50">
@@ -626,8 +638,8 @@ export default function ScenarioLibraryPage() {
               ))}
             </div>
           )}
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

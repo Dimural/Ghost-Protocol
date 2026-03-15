@@ -47,18 +47,16 @@ export function AdaptationBanner({
   const connectionBadge = CONNECTION_LABELS[connectionState];
 
   return (
-    <section className="adaptation-banner-enter relative overflow-hidden rounded-[28px] border border-[rgba(207,176,122,0.24)] bg-[linear-gradient(180deg,rgba(31,24,17,0.92),rgba(20,22,28,0.95))] px-6 py-6 shadow-[0_24px_64px_rgba(0,0,0,0.24)]">
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-[rgba(207,176,122,0.45)]" />
-
+    <section className="adaptation-banner-enter relative overflow-hidden rounded-[32px] bg-[linear-gradient(180deg,rgba(15,15,12,0.94),rgba(12,13,16,0.96))] px-8 py-8 shadow-[0_24px_64px_rgba(0,0,0,0.24)]">
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-4xl">
-          <div className="app-chip app-chip-warning">
+          <div className="landing-pill landing-pill-accent">
             <Sparkles className="h-3.5 w-3.5" />
             Attacker Adapting
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <div className="app-chip app-chip-danger rounded-full p-3">
+            <div className="landing-pill rounded-full p-3">
               <BrainCircuit className="h-5 w-5" />
             </div>
             <div>

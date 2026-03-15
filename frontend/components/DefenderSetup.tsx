@@ -64,7 +64,7 @@ export function DefenderSetup({
           <p className="text-base font-semibold text-slate-50">Use Police AI</p>
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Launch instantly with Ghost Protocol&apos;s built-in fallback
-            defender. No webhook required.
+            defender. No setup needed.
           </p>
         </button>
 
@@ -82,7 +82,7 @@ export function DefenderSetup({
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Send transaction payloads to your fraud endpoint and collect
-            APPROVE or DENY decisions in real time.
+            decisions in real time.
           </p>
         </button>
       </div>
@@ -105,9 +105,7 @@ export function DefenderSetup({
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-xl text-sm leading-6 text-slate-400">
-                Ghost Protocol sends defender-safe transaction JSON and expects
-                a matching `transaction_id`, `decision`, and `confidence` in
-                return.
+                Ghost Protocol sends a transaction payload and expects a valid response back.
               </p>
               <button
                 type="button"
@@ -122,12 +120,10 @@ export function DefenderSetup({
         ) : (
           <div className="space-y-3">
             <p className="text-sm leading-6 text-slate-300">
-              Police AI is pre-wired for mock mode and will automatically switch
-              to live Groq-backed reasoning once `GROQ_API_KEY` is present.
+              Police AI is built in and ready for immediate use.
             </p>
             <p className="text-sm leading-6 text-slate-400">
-              This path is the safest demo default because it avoids external
-              network dependencies while keeping the launch flow intact.
+              It is the fastest way to launch a clean live demo.
             </p>
           </div>
         )}
