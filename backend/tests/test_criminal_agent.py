@@ -137,6 +137,38 @@ async def test_adapt_produces_different_attacks(target_persona):
 
 
 @pytest.mark.asyncio
+async def test_adapt_quota_exhaustion_uses_clean_local_message(target_persona, monkeypatch):
+    async def quota_error(*args, **kwargs):
+        raise RuntimeError("Groq 429 rate limit exceeded.")
+
+    monkeypatch.setattr("backend.agents.criminal_agent.USE_MOCK_LLM", False)
+    monkeypatch.setattr(CriminalAgent, "_generate_llm_adapted_attacks", quota_error)
+
+    agent = CriminalAgent(persona="botnet")
+    adapted_attacks = await agent.adapt(
+        previous_attacks=[
+            _attack(
+                tx_id="caught-1",
+                user_id=target_persona.id,
+                amount=45.0,
+                merchant="Coinbase",
+                category="transfer",
+                city="Toronto",
+                country="Canada",
+                transaction_type=TransactionType.TRANSFER,
+            )
+        ],
+        caught_by_defender=["caught-1"],
+    )
+
+    assert adapted_attacks
+    assert (
+        agent.last_adaptation_reasoning
+        == "Groq rate limit reached; continuing with local botnet adaptation logic."
+    )
+
+
+@pytest.mark.asyncio
 async def test_llm_error_falls_back_to_seed_data(target_persona, monkeypatch):
     async def broken_llm(*args, **kwargs):
         raise RuntimeError("boom")

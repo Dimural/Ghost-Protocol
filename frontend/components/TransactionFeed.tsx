@@ -252,30 +252,26 @@ export function TransactionFeed({
   const connectionBadge = CONNECTION_BADGES[connectionState];
 
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.84)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
+    <section className="app-panel p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-            Left Panel
-          </p>
+          <p className="app-kicker">Left Panel</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Live transaction feed
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-            Latest defender decisions appear at the top. Fraud rows glow red,
-            misses flare amber, and older entries fade out to keep the signal
-            dense.
+            Latest defender decisions appear at the top. High-risk outcomes are
+            separated with restrained status accents while older entries fade
+            back to preserve scanability.
           </p>
         </div>
 
         <div className="space-y-3">
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] ${connectionBadge.className}`}
-          >
+          <div className={`app-chip ${connectionBadge.className}`}>
             <span className="h-2 w-2 rounded-full bg-current" />
             {connectionBadge.label}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
+          <div className="app-subpanel px-4 py-3 text-right">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Processed
             </p>
@@ -288,7 +284,7 @@ export function TransactionFeed({
 
       <div className="mt-6 max-h-[calc(100vh-14rem)] min-h-[28rem] space-y-3 overflow-y-auto pr-2">
         {entries.length === 0 ? (
-          <div className="flex h-full min-h-[28rem] items-center justify-center rounded-[24px] border border-dashed border-white/12 bg-slate-950/35 px-8 text-center">
+          <div className="flex h-full min-h-[28rem] items-center justify-center rounded-[20px] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] px-8 text-center">
             <div className="max-w-md">
               <p className="text-sm uppercase tracking-[0.24em] text-slate-500">
                 Awaiting traffic
@@ -314,10 +310,10 @@ export function TransactionFeed({
             return (
               <article
                 key={item.id}
-                className={`rounded-[24px] border border-white/10 px-4 py-4 transition ${
+                className={`rounded-[20px] border border-white/10 px-4 py-4 transition ${
                   isFraud
-                    ? "border-l-4 border-l-rose-400 bg-rose-400/[0.08] shadow-[0_0_34px_rgba(255,59,59,0.08)]"
-                    : "border-l-4 border-l-cyan-400/0 bg-white/[0.03]"
+                    ? "border-l-2 border-l-rose-300 bg-[rgba(219,138,138,0.08)]"
+                    : "border-l-2 border-l-[rgba(154,182,232,0.28)] bg-[rgba(255,255,255,0.03)]"
                 } ${!item.isCorrect ? "ring-1 ring-amber-300/20" : ""}`}
                 style={{
                   opacity,
@@ -343,7 +339,7 @@ export function TransactionFeed({
 
                       <div className="mt-2 flex flex-wrap items-center gap-3">
                         <div className="inline-flex items-center gap-2 text-slate-50">
-                          <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-cyan-100">
+                          <div className="app-subpanel rounded-xl p-2 text-slate-200">
                             <CategoryIcon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
@@ -356,7 +352,7 @@ export function TransactionFeed({
                           </div>
                         </div>
 
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/55 px-3 py-1.5 text-sm text-slate-200">
+                        <div className="app-chip rounded-full px-3 py-1.5 normal-case tracking-normal text-sm text-slate-200">
                           <MapPinned className="h-4 w-4 text-slate-400" />
                           <span>
                             {toFlagEmoji(item.transaction.location_country)}{" "}
@@ -369,8 +365,8 @@ export function TransactionFeed({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/55 px-3 py-2 text-sm font-medium text-slate-100">
-                      <Banknote className="h-4 w-4 text-cyan-200" />
+                    <div className="app-chip rounded-full px-3 py-2 normal-case tracking-normal text-sm font-medium text-slate-100">
+                      <Banknote className="h-4 w-4 text-slate-300" />
                       {formatAmount(
                         item.transaction.amount,
                         item.transaction.currency,
@@ -378,10 +374,10 @@ export function TransactionFeed({
                     </div>
 
                     <div
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
+                      className={`app-chip px-3 py-2 ${
                         decisionDenied
-                          ? "border-rose-300/20 bg-rose-400/10 text-rose-100"
-                          : "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                          ? "app-chip-danger"
+                          : "app-chip-success"
                       }`}
                     >
                       {decisionDenied ? (
@@ -393,10 +389,10 @@ export function TransactionFeed({
                     </div>
 
                     <div
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
+                      className={`app-chip px-3 py-2 ${
                         isFraud
-                          ? "border-rose-300/20 bg-rose-400/10 text-rose-100"
-                          : "border-slate-300/20 bg-white/5 text-slate-200"
+                          ? "app-chip-danger"
+                          : ""
                       }`}
                     >
                       {isFraud ? (
@@ -408,10 +404,10 @@ export function TransactionFeed({
                     </div>
 
                     <div
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] ${
+                      className={`app-chip px-3 py-2 ${
                         item.isCorrect
-                          ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-                          : "border-amber-300/20 bg-amber-300/10 text-amber-100"
+                          ? "app-chip-success"
+                          : "app-chip-warning"
                       }`}
                     >
                       {item.isCorrect ? (

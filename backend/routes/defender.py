@@ -9,6 +9,7 @@ fallback file.
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -83,6 +84,17 @@ class TestDefenderResponse(BaseModel):
     status: Literal["reachable", "unreachable"]
     raw_response: dict | None = None
     error: str | None = None
+
+
+class SampleWebhookRequest(BaseModel):
+    transaction_id: str = Field(min_length=1)
+    amount: float = Field(ge=0.0)
+    merchant: str = Field(min_length=1)
+    category: str = Field(min_length=1)
+    location_city: str = Field(min_length=1)
+    location_country: str = Field(min_length=1)
+    transaction_type: TransactionType
+    user_spending_history_summary: str = Field(min_length=1)
 
 
 class DefenderErrorLogResponse(BaseModel):
@@ -288,6 +300,24 @@ async def test_defender_webhook(request: TestDefenderRequest) -> TestDefenderRes
     )
 
 
+@router.post("/defender/sample-webhook", response_model=DefenderDecision)
+async def sample_defender_webhook(request: SampleWebhookRequest) -> DefenderDecision:
+    score, reasons = _score_sample_webhook(request)
+    decision = "DENY" if score >= 0.45 else "APPROVE"
+    confidence = min(0.99, 0.52 + (score * 0.45)) if decision == "DENY" else max(0.51, 0.92 - (score * 0.4))
+    reason = (
+        "Denied because " + "; ".join(reasons[:3]) + "."
+        if decision == "DENY"
+        else "Approved because no strong fraud signals were detected by the sample webhook."
+    )
+    return DefenderDecision(
+        transaction_id=request.transaction_id,
+        decision=decision,
+        confidence=round(confidence, 2),
+        reason=reason,
+    )
+
+
 @router.get("/defender/{match_id}/errors", response_model=DefenderErrorLogResponse)
 async def get_defender_error_log(match_id: str) -> DefenderErrorLogResponse:
     errors = get_defender_errors(match_id)
@@ -372,6 +402,57 @@ def _build_dummy_transaction_payload(match_id: str) -> dict[str, object]:
             "Shoppers Drug Mart $14.20, Metro $52.10, Spotify $11.99"
         ),
     }
+
+
+def _score_sample_webhook(request: SampleWebhookRequest) -> tuple[float, list[str]]:
+    score = 0.0
+    reasons: list[str] = []
+    merchant_lower = request.merchant.lower()
+    history_lower = request.user_spending_history_summary.lower()
+    historical_amounts = [
+        float(match)
+        for match in re.findall(r"\$([0-9]+(?:\.[0-9]+)?)", request.user_spending_history_summary)
+    ]
+    avg_history_amount = (
+        sum(historical_amounts) / len(historical_amounts) if historical_amounts else None
+    )
+
+    if request.location_country != "Canada":
+        score += 0.45
+        reasons.append("transaction is outside Canada")
+
+    if request.transaction_type in (TransactionType.TRANSFER, TransactionType.WITHDRAWAL):
+        score += 0.25
+        reasons.append("money-movement channel is higher risk")
+
+    if request.amount >= 1000:
+        score += 0.40
+        reasons.append("amount is very large")
+    elif request.amount >= 250:
+        score += 0.20
+        reasons.append("amount is elevated")
+
+    if avg_history_amount is not None and request.amount > avg_history_amount * 2.5:
+        score += 0.20
+        reasons.append("amount is much larger than recent history")
+
+    if any(keyword in merchant_lower for keyword in ("wire", "transfer", "coinbase", "crypto", "gift")):
+        score += 0.25
+        reasons.append("merchant looks like a fraud-prone cash-out channel")
+
+    if request.merchant.lower() in history_lower and request.amount > 75:
+        score += 0.10
+        reasons.append("same merchant is being hit repeatedly")
+
+    if request.location_city.lower() not in history_lower and request.location_country != "Canada":
+        score += 0.20
+        reasons.append("location is not reflected in recent history")
+
+    if request.category.lower() not in history_lower and request.amount > 100:
+        score += 0.10
+        reasons.append("category is absent from recent history")
+
+    return min(score, 1.0), reasons
 
 
 def _timestamp() -> str:

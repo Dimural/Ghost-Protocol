@@ -18,6 +18,7 @@ def isolate_report_state(tmp_path, monkeypatch):
     monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", None)
     monkeypatch.setattr(REPORT_STORE, "_fallback_path", tmp_path / "reports.json")
     monkeypatch.setattr(REPORT_STORE, "_redis_client", None)
+    monkeypatch.setattr("backend.core.report_generator.USE_MOCK_LLM", True)
 
 
 def _transaction(tx_id: str, amount: float, *, merchant: str, city: str) -> Transaction:

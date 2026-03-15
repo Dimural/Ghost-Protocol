@@ -17,6 +17,7 @@ import redis
 from pydantic import BaseModel, Field
 
 from backend.config import REDIS_URL
+from backend.core.adaptation_analysis import AdaptationEvidence
 from backend.core.referee import MatchScore
 from backend.data.models import DefenderDecision, Transaction
 
@@ -60,6 +61,8 @@ class AdaptationNotification(BaseModel):
     total_rounds: int
     reasoning: str
     banner_message: str
+    verified: bool | None = None
+    evidence_summary: str | None = None
     created_at: str = Field(default_factory=utc_now)
 
 
@@ -69,6 +72,8 @@ class AttackRound(BaseModel):
     caught_ids: list[str] = Field(default_factory=list)
     strategy_notes: str | None = None
     adaptation_reasoning: str | None = None
+    adaptation_evidence: AdaptationEvidence | None = None
+    runtime_mode: Literal["mock", "groq"] | None = None
     notification: AdaptationNotification | None = None
     created_at: str = Field(default_factory=utc_now)
 

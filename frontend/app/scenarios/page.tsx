@@ -66,20 +66,20 @@ function formatTimestamp(value: string | null): string {
 function getStatusTone(status: string): string {
   switch (status) {
     case "complete":
-      return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+      return "app-chip app-chip-success";
     case "running":
-      return "border-rose-300/20 bg-rose-400/10 text-rose-100";
+      return "app-chip app-chip-danger";
     case "paused":
-      return "border-amber-300/20 bg-amber-300/10 text-amber-100";
+      return "app-chip app-chip-warning";
     case "setup":
-      return "border-cyan-300/20 bg-cyan-400/10 text-cyan-100";
+      return "app-chip app-chip-accent";
     default:
-      return "border-slate-300/20 bg-slate-400/10 text-slate-200";
+      return "app-chip";
   }
 }
 
 function getArchiveTone(): string {
-  return "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100";
+  return "app-chip";
 }
 
 function getPersonaLabel(persona: CriminalPersona | null): string {
@@ -196,9 +196,9 @@ export default function ScenarioLibraryPage() {
 
   if (isLoading) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-7xl">
-          <div className="rounded-[32px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-8 text-slate-200 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="app-panel p-8 text-slate-200">
             Loading scenario library...
           </div>
         </div>
@@ -208,9 +208,9 @@ export default function ScenarioLibraryPage() {
 
   if (items.length === 0) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-4xl">
-          <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <section className="app-hero p-8">
             <Link
               href="/"
               className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
@@ -218,9 +218,7 @@ export default function ScenarioLibraryPage() {
               <ArrowLeft className="h-4 w-4" />
               Back to setup
             </Link>
-            <p className="mt-6 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-              Scenario Library
-            </p>
+            <p className="app-kicker mt-6">Scenario Library</p>
             <h1 className="mt-2 text-4xl font-semibold text-slate-50">
               No tracked matches yet
             </h1>
@@ -231,7 +229,7 @@ export default function ScenarioLibraryPage() {
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-5 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+              className="app-button mt-6"
             >
               <ExternalLink className="h-4 w-4" />
               Open setup
@@ -243,9 +241,9 @@ export default function ScenarioLibraryPage() {
   }
 
   return (
-    <main className="px-6 py-8 sm:px-8 lg:px-12">
+    <main className="app-page">
       <div className="mx-auto max-w-7xl space-y-8">
-        <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+        <section className="app-hero p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <Link
@@ -255,9 +253,7 @@ export default function ScenarioLibraryPage() {
                 <ArrowLeft className="h-4 w-4" />
                 Back to setup
               </Link>
-              <p className="mt-5 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                Scenario Library
-              </p>
+              <p className="app-kicker mt-5">Scenario Library</p>
               <h1 className="mt-2 text-4xl font-semibold text-slate-50">
                 Clone proven attack setups into fresh matches
               </h1>
@@ -269,7 +265,7 @@ export default function ScenarioLibraryPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   Completed
                 </p>
@@ -277,7 +273,7 @@ export default function ScenarioLibraryPage() {
                   {completedMatches.length}
                 </p>
               </div>
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   Archived
                 </p>
@@ -285,7 +281,7 @@ export default function ScenarioLibraryPage() {
                   {archivedMatches.length}
                 </p>
               </div>
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   Tracked Total
                 </p>
@@ -300,9 +296,7 @@ export default function ScenarioLibraryPage() {
         <section className="space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                Completed Matches
-              </p>
+              <p className="app-kicker">Completed Matches</p>
               <h2 className="mt-2 text-2xl font-semibold text-slate-50">
                 Ready to clone
               </h2>
@@ -310,7 +304,7 @@ export default function ScenarioLibraryPage() {
           </div>
 
           {completedMatches.length === 0 ? (
-            <div className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.8)] p-6 text-sm leading-6 text-slate-300 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+            <div className="app-panel p-6 text-sm leading-6 text-slate-300">
               No completed matches yet. Finish a match and it will appear here
               with a `Clone this Scenario` action.
             </div>
@@ -325,7 +319,7 @@ export default function ScenarioLibraryPage() {
                 return (
                   <article
                     key={item.matchId}
-                    className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]"
+                    className="app-panel p-6"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
@@ -337,25 +331,23 @@ export default function ScenarioLibraryPage() {
                         </h3>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div
-                          className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] ${getStatusTone(item.status)}`}
-                        >
+                        <div className={getStatusTone(item.status)}>
                           {item.status}
                         </div>
                       </div>
                     </div>
 
                     <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Criminal Persona
                         </p>
                         <p className="mt-2 inline-flex items-center gap-2 text-base font-medium capitalize text-slate-50">
-                          <PersonaIcon className="h-4 w-4 text-cyan-200" />
+                          <PersonaIcon className="h-4 w-4 text-slate-300" />
                           {getPersonaLabel(item.criminalPersona)}
                         </p>
                       </div>
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Defender Mode
                         </p>
@@ -367,7 +359,7 @@ export default function ScenarioLibraryPage() {
                               : "Unknown"}
                         </p>
                       </div>
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Rounds
                         </p>
@@ -375,7 +367,7 @@ export default function ScenarioLibraryPage() {
                           {item.totalRounds ? `${item.totalRounds}` : "Unknown"}
                         </p>
                       </div>
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Last Updated
                         </p>
@@ -386,7 +378,7 @@ export default function ScenarioLibraryPage() {
                     </div>
 
                     {item.refreshError ? (
-                      <div className="mt-4 rounded-[22px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                      <div className="app-subpanel mt-4 p-4 text-sm leading-6 text-slate-300">
                         Latest backend refresh failed: {item.refreshError}
                       </div>
                     ) : null}
@@ -395,13 +387,13 @@ export default function ScenarioLibraryPage() {
                       {cloneReady ? (
                         <Link
                           href={buildCloneSetupUrl(item.matchId)}
-                          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                          className="app-button"
                         >
                           <Copy className="h-4 w-4" />
                           Clone this Scenario
                         </Link>
                       ) : (
-                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-300/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-400">
+                        <span className="app-chip">
                           <Copy className="h-4 w-4" />
                           Clone unavailable
                         </span>
@@ -409,7 +401,7 @@ export default function ScenarioLibraryPage() {
 
                       <Link
                         href={item.shareUrl || `/match/${item.matchId}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/15"
+                        className="app-button app-button-secondary"
                       >
                         <ExternalLink className="h-4 w-4" />
                         Open War Room
@@ -417,7 +409,7 @@ export default function ScenarioLibraryPage() {
 
                       <Link
                         href={`/replay/${item.matchId}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-300/15"
+                        className="app-button app-button-secondary"
                       >
                         <ExternalLink className="h-4 w-4" />
                         Open Replay
@@ -440,16 +432,14 @@ export default function ScenarioLibraryPage() {
 
         <section className="space-y-5">
           <div>
-            <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-              Archived Matches
-            </p>
+            <p className="app-kicker">Archived Matches</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-50">
               Read-only after 24 hours
             </h2>
           </div>
 
           {archivedMatches.length === 0 ? (
-            <div className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.8)] p-6 text-sm leading-6 text-slate-300 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+            <div className="app-panel p-6 text-sm leading-6 text-slate-300">
               No archived matches yet. Once a tracked match passes its 24-hour
               expiry, it stays viewable here with an `Archived` badge and
               read-only behavior.
@@ -466,7 +456,7 @@ export default function ScenarioLibraryPage() {
                 return (
                   <article
                     key={item.matchId}
-                    className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]"
+                    className="app-panel p-6"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
@@ -478,30 +468,26 @@ export default function ScenarioLibraryPage() {
                         </h3>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div
-                          className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] ${getArchiveTone()}`}
-                        >
+                        <div className={getArchiveTone()}>
                           Archived
                         </div>
-                        <div
-                          className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] ${getStatusTone(item.status)}`}
-                        >
+                        <div className={getStatusTone(item.status)}>
                           {item.status}
                         </div>
                       </div>
                     </div>
 
                     <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Criminal Persona
                         </p>
                         <p className="mt-2 inline-flex items-center gap-2 text-base font-medium capitalize text-slate-50">
-                          <PersonaIcon className="h-4 w-4 text-cyan-200" />
+                          <PersonaIcon className="h-4 w-4 text-slate-300" />
                           {getPersonaLabel(item.criminalPersona)}
                         </p>
                       </div>
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Defender Mode
                         </p>
@@ -513,7 +499,7 @@ export default function ScenarioLibraryPage() {
                               : "Unknown"}
                         </p>
                       </div>
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Archived At
                         </p>
@@ -521,7 +507,7 @@ export default function ScenarioLibraryPage() {
                           {formatTimestamp(item.expiresAt)}
                         </p>
                       </div>
-                      <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                      <div className="app-subpanel p-4">
                         <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                           Last Updated
                         </p>
@@ -532,7 +518,7 @@ export default function ScenarioLibraryPage() {
                     </div>
 
                     {item.refreshError ? (
-                      <div className="mt-4 rounded-[22px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                      <div className="app-subpanel mt-4 p-4 text-sm leading-6 text-slate-300">
                         Latest backend refresh failed: {item.refreshError}
                       </div>
                     ) : null}
@@ -541,7 +527,7 @@ export default function ScenarioLibraryPage() {
                       {cloneReady ? (
                         <Link
                           href={buildCloneSetupUrl(item.matchId)}
-                          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                          className="app-button"
                         >
                           <Copy className="h-4 w-4" />
                           Clone this Scenario
@@ -550,7 +536,7 @@ export default function ScenarioLibraryPage() {
 
                       <Link
                         href={item.shareUrl || `/match/${item.matchId}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/15"
+                        className="app-button app-button-secondary"
                       >
                         <ExternalLink className="h-4 w-4" />
                         Open War Room
@@ -558,7 +544,7 @@ export default function ScenarioLibraryPage() {
 
                       <Link
                         href={`/replay/${item.matchId}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-300/15"
+                        className="app-button app-button-secondary"
                       >
                         <ExternalLink className="h-4 w-4" />
                         Open Replay
@@ -579,16 +565,14 @@ export default function ScenarioLibraryPage() {
 
         <section className="space-y-5">
           <div>
-            <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-              Active / Pending
-            </p>
+            <p className="app-kicker">Active / Pending</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-50">
               Still in motion
             </h2>
           </div>
 
           {inProgressMatches.length === 0 ? (
-            <div className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.8)] p-6 text-sm leading-6 text-slate-300 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+            <div className="app-panel p-6 text-sm leading-6 text-slate-300">
               No active tracked matches. Everything in this browser is already
               complete and clone-ready.
             </div>
@@ -597,7 +581,7 @@ export default function ScenarioLibraryPage() {
               {inProgressMatches.map((item) => (
                 <article
                   key={item.matchId}
-                  className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]"
+                  className="app-panel p-6"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -608,9 +592,7 @@ export default function ScenarioLibraryPage() {
                         {item.scenarioName}
                       </h3>
                     </div>
-                    <div
-                      className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] ${getStatusTone(item.status)}`}
-                    >
+                    <div className={getStatusTone(item.status)}>
                       {item.status}
                     </div>
                   </div>
@@ -621,7 +603,7 @@ export default function ScenarioLibraryPage() {
                   </p>
 
                   {item.refreshError ? (
-                    <div className="mt-4 rounded-[22px] border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+                    <div className="app-subpanel mt-4 p-4 text-sm leading-6 text-slate-300">
                       Latest backend refresh failed: {item.refreshError}
                     </div>
                   ) : null}
@@ -629,7 +611,7 @@ export default function ScenarioLibraryPage() {
                   <div className="mt-5 flex flex-wrap gap-3">
                     <Link
                       href={item.shareUrl || `/match/${item.matchId}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/15"
+                      className="app-button app-button-secondary"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open War Room

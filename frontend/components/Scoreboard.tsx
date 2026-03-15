@@ -119,7 +119,7 @@ function calculateMoneyLost(score: MatchScorePayload): number {
 function StatCard({ label, value, hint, className, Icon }: StatCardProps) {
   return (
     <div
-      className={`rounded-[22px] border px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${className}`}
+      className={`app-subpanel px-4 py-4 ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -131,7 +131,7 @@ function StatCard({ label, value, hint, className, Icon }: StatCardProps) {
           </p>
           <p className="mt-3 text-sm text-slate-300">{hint}</p>
         </div>
-        <div className="rounded-full border border-white/10 bg-slate-950/40 p-2.5 text-slate-100">
+        <div className="app-subpanel-strong rounded-full p-2.5 text-slate-100">
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -153,12 +153,10 @@ export function Scoreboard({
   const StatusIcon = statusTone.Icon;
 
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(15,22,41,0.92),rgba(8,12,24,0.94))] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
+    <section className="app-panel p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-            Match Scoreboard
-          </p>
+          <p className="app-kicker">Match Scoreboard</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Defender score stream
           </h2>
@@ -169,11 +167,11 @@ export function Scoreboard({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100">
+          <div className="app-chip">
             Round {currentRound}/{totalRounds}
           </div>
           <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${statusTone.className}`}
+            className={`app-chip ${statusTone.className}`}
           >
             <span className={`h-2.5 w-2.5 rounded-full ${statusTone.dotClassName}`} />
             <StatusIcon className="h-3.5 w-3.5" />
@@ -182,7 +180,7 @@ export function Scoreboard({
         </div>
       </div>
 
-      <div className="mt-6 rounded-[26px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,59,59,0.1),transparent_38%),linear-gradient(180deg,rgba(5,9,18,0.98),rgba(8,13,24,0.94))] p-4">
+      <div className="app-subpanel mt-6 p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <StatCard
             label="Caught"
@@ -215,7 +213,7 @@ export function Scoreboard({
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
-          <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+          <div className="app-subpanel px-4 py-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
               F1 Score
             </p>
@@ -223,7 +221,7 @@ export function Scoreboard({
               {formatRatio(f1Score)}
             </p>
           </div>
-          <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+          <div className="app-subpanel px-4 py-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Recall
             </p>
@@ -231,7 +229,7 @@ export function Scoreboard({
               {formatRatio(recall)}
             </p>
           </div>
-          <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+          <div className="app-subpanel px-4 py-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Precision
             </p>

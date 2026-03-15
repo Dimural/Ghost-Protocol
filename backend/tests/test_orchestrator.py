@@ -9,6 +9,7 @@ from backend.core.match_state import MATCH_STATE_STORE
 from backend.core.match_state import MatchState
 from backend.core.orchestrator import MATCH_ORCHESTRATOR
 from backend.core.report_generator import REPORT_STORE
+from backend.data.models import DefenderDecision
 import backend.core.orchestrator as orchestrator_module
 from backend.main import app
 from backend.routes.defender import _DEFENDER_STORE
@@ -25,6 +26,9 @@ def isolate_orchestrator_state(tmp_path, monkeypatch):
     monkeypatch.setattr(_ERROR_STORE, "_redis_client", None)
     monkeypatch.setattr(REPORT_STORE, "_fallback_path", tmp_path / "reports.json")
     monkeypatch.setattr(REPORT_STORE, "_redis_client", None)
+    monkeypatch.setattr("backend.agents.criminal_agent.USE_MOCK_LLM", True)
+    monkeypatch.setattr("backend.agents.police_agent.USE_MOCK_LLM", True)
+    monkeypatch.setattr("backend.core.report_generator.USE_MOCK_LLM", True)
     monkeypatch.setattr(orchestrator_module, "DEFAULT_ATTACKS_PER_ROUND", 3)
     monkeypatch.setattr(orchestrator_module, "TRANSACTION_DELAY_SECONDS", 0.0)
     monkeypatch.setattr(orchestrator_module, "ROUND_DELAY_SECONDS", 0.0)
@@ -58,12 +62,52 @@ async def test_orchestrator_runs_match_to_completion_with_police_ai():
     assert len(state.transactions) == 6
     assert len(state.attack_rounds[0].caught_ids) >= 0
     assert len(state.attack_rounds[1].caught_ids) >= 0
+    assert state.attack_rounds[1].adaptation_evidence is not None
+    assert state.attack_rounds[1].runtime_mode == "mock"
     assert (
         state.score.true_positives
         + state.score.false_positives
         + state.score.false_negatives
         + state.score.true_negatives
     ) == len(state.defender_decisions)
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_uses_police_batch_evaluation(monkeypatch):
+    batch_sizes: list[int] = []
+
+    async def fake_batch(self, transactions, recent_history_by_id=None):
+        batch_sizes.append(len(transactions))
+        return [
+            DefenderDecision(
+                transaction_id=transaction.id,
+                decision="DENY",
+                confidence=0.9,
+                reason="Synthetic batch decision",
+            )
+            for transaction in transactions
+        ]
+
+    async def fail_single(self, transaction, recent_transactions=None):
+        raise AssertionError("evaluate_transaction should not be used in police batch mode")
+
+    monkeypatch.setattr(orchestrator_module.PoliceAgent, "evaluate_batch", fake_batch)
+    monkeypatch.setattr(orchestrator_module.PoliceAgent, "evaluate_transaction", fail_single)
+
+    MATCH_STATE_STORE.save(
+        MatchState(
+            match_id="orchestrator-batch",
+            scenario_name="Batch Run",
+            status="running",
+            total_rounds=2,
+            criminal_persona="patient",
+            defender_mode="police_ai",
+        )
+    )
+
+    await MATCH_ORCHESTRATOR.run_match("orchestrator-batch")
+
+    assert batch_sizes == [3, 3]
 
 
 def test_start_route_requires_registered_defender():

@@ -44,9 +44,9 @@ function getRiskBand(threatLevel: number): RiskBand {
       description: "Missed fraud is overwhelming the defender.",
       color: "#ff3b3b",
       panelClassName:
-        "border-rose-300/25 bg-rose-400/[0.08] shadow-[0_0_40px_rgba(255,59,59,0.16)]",
+        "border-[rgba(219,138,138,0.24)] bg-[rgba(219,138,138,0.08)]",
       badgeClassName:
-        "border-rose-300/20 bg-rose-400/10 text-rose-100 risk-meter-breach",
+        "app-chip app-chip-danger risk-meter-breach",
     };
   }
 
@@ -56,9 +56,9 @@ function getRiskBand(threatLevel: number): RiskBand {
       description: "Missed fraud is compounding fast enough to threaten the match.",
       color: "#fb923c",
       panelClassName:
-        "border-orange-300/20 bg-orange-400/[0.07] shadow-[0_0_28px_rgba(251,146,60,0.14)]",
+        "border-[rgba(207,176,122,0.24)] bg-[rgba(207,176,122,0.08)]",
       badgeClassName:
-        "border-orange-300/20 bg-orange-400/10 text-orange-100",
+        "app-chip app-chip-warning",
     };
   }
 
@@ -68,9 +68,9 @@ function getRiskBand(threatLevel: number): RiskBand {
       description: "The defender is leaking suspicious traffic, but the breach is not runaway yet.",
       color: "#ffd700",
       panelClassName:
-        "border-amber-300/20 bg-amber-300/[0.07] shadow-[0_0_24px_rgba(250,204,21,0.1)]",
+        "border-[rgba(207,176,122,0.24)] bg-[rgba(207,176,122,0.08)]",
       badgeClassName:
-        "border-amber-300/20 bg-amber-300/10 text-amber-100",
+        "app-chip app-chip-warning",
     };
   }
 
@@ -79,9 +79,9 @@ function getRiskBand(threatLevel: number): RiskBand {
     description: "Most processed fraud is being contained before it gets through.",
     color: "#00ff88",
     panelClassName:
-      "border-emerald-300/20 bg-emerald-400/[0.06] shadow-[0_0_20px_rgba(0,255,136,0.1)]",
+      "border-[rgba(143,199,173,0.22)] bg-[rgba(143,199,173,0.07)]",
     badgeClassName:
-      "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+      "app-chip app-chip-success",
   };
 }
 
@@ -141,13 +141,11 @@ export function RiskMeter({
 
   return (
     <section
-      className={`rounded-[28px] border p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur transition ${riskBand.panelClassName}`}
+      className={`app-panel p-6 transition ${riskBand.panelClassName}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-            Right Panel
-          </p>
+          <p className="app-kicker">Right Panel</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Real-time risk meter
           </h2>
@@ -157,7 +155,7 @@ export function RiskMeter({
           </p>
         </div>
 
-        <div className="rounded-full border border-cyan-300/20 bg-cyan-400/10 p-3 text-cyan-100">
+        <div className="app-chip app-chip-accent rounded-full p-3">
           <Gauge className="h-5 w-5" />
         </div>
       </div>
@@ -166,7 +164,7 @@ export function RiskMeter({
         <div className="flex justify-center">
           <div className="relative h-[19rem] w-[19rem]">
             <div
-              className="absolute inset-0 rounded-full border border-white/10 shadow-[inset_0_0_40px_rgba(255,255,255,0.04)]"
+              className="absolute inset-0 rounded-full border border-white/10 shadow-[inset_0_0_24px_rgba(255,255,255,0.03)]"
               style={gaugeFaceStyle}
             />
 
@@ -195,7 +193,7 @@ export function RiskMeter({
               />
             </svg>
 
-            <div className="absolute inset-[22%] rounded-full border border-white/10 bg-[rgba(6,9,19,0.92)] shadow-[inset_0_0_30px_rgba(255,255,255,0.03)]" />
+            <div className="absolute inset-[22%] rounded-full border border-white/10 bg-[rgba(12,14,19,0.92)] shadow-[inset_0_0_18px_rgba(255,255,255,0.02)]" />
 
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
@@ -234,7 +232,7 @@ export function RiskMeter({
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-[22px] border border-white/10 bg-slate-950/45 p-5">
+          <div className="app-subpanel p-5">
             <p className="text-sm font-medium text-slate-100">
               {riskBand.description}
             </p>
@@ -244,7 +242,7 @@ export function RiskMeter({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[22px] border border-white/10 bg-slate-950/45 p-4">
+            <div className="app-subpanel p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Missed Fraud
               </p>
@@ -252,7 +250,7 @@ export function RiskMeter({
                 {falseNegatives}
               </p>
             </div>
-            <div className="rounded-[22px] border border-white/10 bg-slate-950/45 p-4">
+            <div className="app-subpanel p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Processed Fraud
               </p>
@@ -262,7 +260,7 @@ export function RiskMeter({
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-white/10 bg-slate-950/45 p-5">
+          <div className="app-subpanel p-5">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Refresh Cadence
             </p>

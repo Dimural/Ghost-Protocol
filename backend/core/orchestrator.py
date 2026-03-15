@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections import defaultdict
 
 from backend.agents.criminal_agent import CriminalAgent
 from backend.agents.police_agent import PoliceAgent
+from backend.core.adaptation_analysis import AdaptationEvidence, analyze_round_adaptation
 from backend.core.dispatcher import WebhookDispatcher
 from backend.core.match_state import (
     AttackRound,
@@ -122,6 +124,7 @@ class MatchOrchestrator:
 
                 next_round_number = current_state.current_round + 1
                 next_attacks = await criminal_agent.adapt(current_round.attacks, caught_ids)
+                adaptation_evidence = analyze_round_adaptation(current_round.attacks, next_attacks)
                 notification = AdaptationNotification(
                     round=next_round_number,
                     total_rounds=current_state.total_rounds,
@@ -131,6 +134,8 @@ class MatchOrchestrator:
                         current_state.total_rounds,
                         criminal_agent.last_adaptation_reasoning,
                     ),
+                    verified=adaptation_evidence.verified,
+                    evidence_summary=adaptation_evidence.summary,
                     created_at=utc_now(),
                 )
                 current_state = self._append_attack_round(
@@ -139,6 +144,8 @@ class MatchOrchestrator:
                     attacks=next_attacks,
                     strategy_notes=criminal_agent.last_strategy_notes,
                     adaptation_reasoning=criminal_agent.last_adaptation_reasoning,
+                    adaptation_evidence=adaptation_evidence,
+                    runtime_mode=criminal_agent.last_runtime_mode,
                     notification=notification,
                 )
                 self._match_store.save(current_state)
@@ -215,6 +222,8 @@ class MatchOrchestrator:
             attacks=attacks,
             strategy_notes=criminal_agent.last_strategy_notes,
             adaptation_reasoning=None,
+            adaptation_evidence=None,
+            runtime_mode=criminal_agent.last_runtime_mode,
             notification=None,
         )
         self._match_store.save(updated_state)
@@ -234,6 +243,47 @@ class MatchOrchestrator:
         processed_ids = {decision.transaction_id for decision in current_state.defender_decisions}
         caught_ids = set(self._caught_ids_for_round(current_state, attack_round.attacks))
         pending_attacks = [tx for tx in attack_round.attacks if tx.id not in processed_ids]
+
+        if current_state.defender_mode == "police_ai":
+            if police_agent is None:
+                raise ValueError("Police AI defender mode requested without a PoliceAgent instance.")
+            batch_decisions = await police_agent.evaluate_batch(
+                pending_attacks,
+                recent_history_by_id=self._recent_history_map_for_transactions(
+                    current_state,
+                    pending_attacks,
+                ),
+            )
+
+            for index, (transaction, decision) in enumerate(zip(pending_attacks, batch_decisions)):
+                latest_state = self._load_required_match(current_state.match_id)
+                if latest_state.status != "running":
+                    return latest_state, sorted(caught_ids)
+
+                current_state = latest_state
+                result = await self._referee.score_transaction(
+                    current_state,
+                    transaction,
+                    decision,
+                    emitter=emitter,
+                )
+                current_state = result.match_state.model_copy(
+                    update={
+                        "status": "running",
+                        "updated_at": utc_now(),
+                    }
+                )
+                self._match_store.save(current_state)
+
+                if result.event.outcome == "true_positive":
+                    caught_ids.add(transaction.id)
+
+                if index < len(pending_attacks) - 1:
+                    await asyncio.sleep(TRANSACTION_DELAY_SECONDS)
+
+            current_state = self._update_round_caught_ids(current_state, attack_round.round, caught_ids)
+            self._match_store.save(current_state)
+            return current_state, sorted(caught_ids)
 
         for index, transaction in enumerate(pending_attacks):
             latest_state = self._load_required_match(current_state.match_id)
@@ -314,6 +364,27 @@ class MatchOrchestrator:
 
         return recent_transactions[-5:]
 
+    def _recent_history_map_for_transactions(
+        self,
+        match_state: MatchState,
+        transactions: list[Transaction],
+    ) -> dict[str, list[Transaction]]:
+        transactions_by_id = {item.id: item for item in match_state.transactions}
+        history_by_user: dict[str, list[Transaction]] = defaultdict(list)
+        history_by_id: dict[str, list[Transaction]] = {}
+
+        for decision in match_state.defender_decisions:
+            prior = transactions_by_id.get(decision.transaction_id)
+            if prior is None:
+                continue
+            history_by_user[prior.user_id].append(prior)
+
+        for transaction in transactions:
+            history_by_id[transaction.id] = list(history_by_user[transaction.user_id][-5:])
+            history_by_user[transaction.user_id].append(transaction)
+
+        return history_by_id
+
     def _caught_ids_for_round(
         self,
         match_state: MatchState,
@@ -351,6 +422,8 @@ class MatchOrchestrator:
         attacks: list[Transaction],
         strategy_notes: str | None,
         adaptation_reasoning: str | None,
+        adaptation_evidence: AdaptationEvidence | None,
+        runtime_mode: str | None,
         notification: AdaptationNotification | None,
     ) -> MatchState:
         transactions = list(match_state.transactions)
@@ -372,6 +445,8 @@ class MatchOrchestrator:
                 caught_ids=[],
                 strategy_notes=strategy_notes,
                 adaptation_reasoning=adaptation_reasoning,
+                adaptation_evidence=adaptation_evidence,
+                runtime_mode=runtime_mode,
                 notification=notification,
                 created_at=utc_now(),
             )

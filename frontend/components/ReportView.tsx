@@ -50,38 +50,37 @@ type PriorityTone = {
 
 const RISK_TONES: Record<MatchReportResponse["risk_rating"], RiskTone> = {
   LOW: {
-    accent: "#00ff88",
-    chipClassName:
-      "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
-    ringClassName: "shadow-[0_0_48px_rgba(16,185,129,0.14)]",
+    accent: "#8fc7ad",
+    chipClassName: "app-chip app-chip-success",
+    ringClassName: "shadow-[0_20px_48px_rgba(0,0,0,0.22)]",
   },
   MEDIUM: {
-    accent: "#ffd700",
-    chipClassName: "border-amber-300/20 bg-amber-300/10 text-amber-100",
-    ringClassName: "shadow-[0_0_48px_rgba(250,204,21,0.14)]",
+    accent: "#c7b07a",
+    chipClassName: "app-chip app-chip-warning",
+    ringClassName: "shadow-[0_20px_48px_rgba(0,0,0,0.22)]",
   },
   HIGH: {
-    accent: "#fb923c",
-    chipClassName: "border-orange-300/20 bg-orange-300/10 text-orange-100",
-    ringClassName: "shadow-[0_0_48px_rgba(251,146,60,0.16)]",
+    accent: "#c98c63",
+    chipClassName: "app-chip app-chip-warning",
+    ringClassName: "shadow-[0_20px_48px_rgba(0,0,0,0.22)]",
   },
   CRITICAL: {
-    accent: "#ff3b3b",
-    chipClassName: "border-rose-300/20 bg-rose-400/10 text-rose-100",
-    ringClassName: "shadow-[0_0_64px_rgba(255,59,59,0.18)]",
+    accent: "#db8a8a",
+    chipClassName: "app-chip app-chip-danger",
+    ringClassName: "shadow-[0_20px_48px_rgba(0,0,0,0.22)]",
   },
 };
 
 const PRIORITY_TONES: Record<RecommendationResponse["priority"], PriorityTone> =
   {
     HIGH: {
-      className: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+      className: "app-chip app-chip-danger",
     },
     MEDIUM: {
-      className: "border-amber-300/20 bg-amber-300/10 text-amber-100",
+      className: "app-chip app-chip-warning",
     },
     LOW: {
-      className: "border-cyan-300/20 bg-cyan-400/10 text-cyan-100",
+      className: "app-chip app-chip-accent",
     },
   };
 
@@ -111,37 +110,37 @@ function buildSummaryCards(report: MatchReportResponse): SummaryCard[] {
     {
       label: "Caught",
       value: String(report.caught),
-      tone: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+      tone: "app-chip app-chip-success",
       Icon: ShieldCheck,
     },
     {
       label: "Missed",
       value: String(report.missed),
-      tone: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+      tone: "app-chip app-chip-danger",
       Icon: ShieldX,
     },
     {
       label: "False Alarms",
       value: String(report.final_score.false_positives),
-      tone: "border-amber-300/20 bg-amber-300/10 text-amber-100",
+      tone: "app-chip app-chip-warning",
       Icon: TriangleAlert,
     },
     {
       label: "F1 Score",
       value: (report.final_score.f1_score ?? 0).toFixed(2),
-      tone: "border-cyan-300/20 bg-cyan-400/10 text-cyan-100",
+      tone: "app-chip app-chip-accent",
       Icon: Gauge,
     },
     {
       label: "Money Defended",
       value: formatMoney(report.money_defended),
-      tone: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+      tone: "app-chip app-chip-success",
       Icon: ShieldCheck,
     },
     {
       label: "Money Lost",
       value: formatMoney(report.money_lost),
-      tone: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+      tone: "app-chip app-chip-danger",
       Icon: ShieldAlert,
     },
   ];
@@ -164,10 +163,8 @@ function RiskMeterCard({
   }deg, rgba(255,255,255,0.08) ${(riskPercent / 100) * 360}deg 360deg)`;
 
   return (
-    <section className="rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(0,212,255,0.12),transparent_46%),linear-gradient(180deg,rgba(11,18,32,0.98),rgba(5,9,18,0.95))] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
-      <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-        Visual Risk Meter
-      </p>
+    <section className="app-panel p-6">
+      <p className="app-kicker">Risk Meter</p>
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold text-slate-50">
@@ -178,9 +175,7 @@ function RiskMeterCard({
             fraudulent transactions processed in this match.
           </p>
         </div>
-        <div
-          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${tone.chipClassName}`}
-        >
+        <div className={tone.chipClassName}>
           <ShieldAlert className="h-3.5 w-3.5" />
           {report.risk_rating}
         </div>
@@ -192,7 +187,7 @@ function RiskMeterCard({
             className={`relative flex h-60 w-60 items-center justify-center rounded-full border border-white/10 ${tone.ringClassName}`}
             style={{ background: ringBackground }}
           >
-            <div className="absolute inset-[18px] rounded-full border border-white/10 bg-[radial-gradient(circle,rgba(15,23,42,0.98),rgba(8,13,24,0.94))]" />
+            <div className="absolute inset-[18px] rounded-full border border-white/10 bg-[radial-gradient(circle,rgba(20,24,32,0.98),rgba(10,12,17,0.94))]" />
             <div className="relative z-10 flex flex-col items-center">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Threat Level
@@ -208,7 +203,7 @@ function RiskMeterCard({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.04] px-5 py-5">
+          <div className="app-subpanel px-5 py-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Fraud caught
             </p>
@@ -216,7 +211,7 @@ function RiskMeterCard({
               {report.caught}
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.04] px-5 py-5">
+          <div className="app-subpanel px-5 py-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Fraud missed
             </p>
@@ -224,7 +219,7 @@ function RiskMeterCard({
               {report.missed}
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.04] px-5 py-5">
+          <div className="app-subpanel px-5 py-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Precision
             </p>
@@ -232,7 +227,7 @@ function RiskMeterCard({
               {formatPercent(report.final_score.precision ?? 0)}
             </p>
           </div>
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.04] px-5 py-5">
+          <div className="app-subpanel px-5 py-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Recall
             </p>
@@ -243,7 +238,7 @@ function RiskMeterCard({
         </div>
       </div>
 
-      <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.04] px-5 py-5">
+      <div className="app-subpanel mt-6 px-5 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
             Match status
@@ -264,17 +259,17 @@ function RiskMeterCard({
 
 function SecurityGapCard({ gap }: { gap: SecurityGapResponse }) {
   return (
-    <article className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,22,41,0.88),rgba(8,13,24,0.94))] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.35)]">
+    <article className="app-panel p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/80">
+          <p className="app-kicker">
             {gap.category.replaceAll("_", " ")}
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-slate-50">
             {gap.pattern_name}
           </h3>
         </div>
-        <div className="rounded-full border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100">
+        <div className="app-chip app-chip-danger">
           {formatMoney(gap.total_money_slipped_through)}
         </div>
       </div>
@@ -282,7 +277,7 @@ function SecurityGapCard({ gap }: { gap: SecurityGapResponse }) {
       <p className="mt-4 text-sm leading-7 text-slate-300">{gap.description}</p>
 
       <div className="mt-5 grid gap-4 md:grid-cols-3">
-        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+        <div className="app-subpanel px-4 py-4">
           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
             Transactions Exploited
           </p>
@@ -290,7 +285,7 @@ function SecurityGapCard({ gap }: { gap: SecurityGapResponse }) {
             {gap.transactions_exploited}
           </p>
         </div>
-        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+        <div className="app-subpanel px-4 py-4">
           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
             Example Merchant
           </p>
@@ -298,7 +293,7 @@ function SecurityGapCard({ gap }: { gap: SecurityGapResponse }) {
             {gap.example_transaction.merchant_label}
           </p>
         </div>
-        <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+        <div className="app-subpanel px-4 py-4">
           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
             Example Window
           </p>
@@ -308,11 +303,11 @@ function SecurityGapCard({ gap }: { gap: SecurityGapResponse }) {
         </div>
       </div>
 
-      <div className="mt-5 rounded-[22px] border border-amber-300/15 bg-amber-300/[0.08] p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-amber-100/80">
+      <div className="app-subpanel mt-5 p-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
           Anonymized example
         </p>
-        <p className="mt-3 text-sm leading-7 text-amber-50/90">
+        <p className="mt-3 text-sm leading-7 text-slate-300">
           {formatMoney(
             gap.example_transaction.amount,
             gap.example_transaction.currency,
@@ -336,24 +331,22 @@ function RecommendationCard({
   const tone = PRIORITY_TONES[recommendation.priority];
 
   return (
-    <article className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,22,41,0.88),rgba(8,13,24,0.94))] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.35)]">
+    <article className="app-panel p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/80">
+          <p className="app-kicker">
             Recommendation
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-slate-50">
             {recommendation.title}
           </h3>
         </div>
-        <div
-          className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${tone.className}`}
-        >
+        <div className={tone.className}>
           {recommendation.priority}
         </div>
       </div>
 
-      <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+      <div className="app-subpanel mt-5 p-4">
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
           Action
         </p>
@@ -362,7 +355,7 @@ function RecommendationCard({
         </p>
       </div>
 
-      <div className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+      <div className="app-subpanel mt-4 p-4">
         <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
           Rationale
         </p>
@@ -372,11 +365,11 @@ function RecommendationCard({
       </div>
 
       {recommendation.code_hint ? (
-        <div className="mt-4 rounded-[22px] border border-cyan-300/15 bg-cyan-400/[0.08] p-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">
+        <div className="app-subpanel mt-4 p-4">
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
             Code Hint
           </p>
-          <p className="mt-3 text-sm leading-7 text-cyan-50/90">
+          <p className="mt-3 text-sm leading-7 text-slate-300">
             {recommendation.code_hint}
           </p>
         </div>
@@ -397,7 +390,7 @@ export function ReportView({
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
-      <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+      <section className="app-hero p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <Link
@@ -407,9 +400,7 @@ export function ReportView({
               <ArrowLeft className="h-4 w-4" />
               Back to War Room
             </Link>
-            <p className="mt-5 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-              Post-Game Report
-            </p>
+            <p className="app-kicker mt-5">Post-Game Report</p>
             <h1 className="mt-2 text-4xl font-semibold text-slate-50">
               {report.scenario_name}
             </h1>
@@ -422,21 +413,21 @@ export function ReportView({
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href={`/replay/${matchId}`}
-                className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-300/15"
+                className="app-button app-button-secondary"
               >
                 <Radar className="h-4 w-4" />
-                Open Heist Replay
+                Open Replay
               </Link>
               <a
                 href={pdfExportUrl}
-                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                className="app-button"
               >
                 <FileText className="h-4 w-4" />
                 Export PDF
               </a>
               <a
                 href={jsonExportUrl}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10"
+                className="app-button app-button-secondary"
               >
                 <FileJson className="h-4 w-4" />
                 Export JSON
@@ -445,18 +436,16 @@ export function ReportView({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+            <div className="app-subpanel px-5 py-4">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Risk Rating
               </p>
-              <div
-                className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${riskTone.chipClassName}`}
-              >
+              <div className={`mt-3 ${riskTone.chipClassName}`}>
                 <ShieldAlert className="h-3.5 w-3.5" />
                 {report.risk_rating}
               </div>
             </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+            <div className="app-subpanel px-5 py-4">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Export Ready
               </p>
@@ -464,7 +453,7 @@ export function ReportView({
                 PDF + JSON
               </p>
             </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+            <div className="app-subpanel px-5 py-4">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Runtime
               </p>
@@ -472,7 +461,7 @@ export function ReportView({
                 {report.runtime_mode}
               </p>
             </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+            <div className="app-subpanel px-5 py-4">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Generated
               </p>
@@ -485,10 +474,8 @@ export function ReportView({
       </section>
 
       <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
-        <section className="rounded-[30px] border border-white/10 bg-[rgba(15,22,41,0.86)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
-          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-            Executive Summary
-          </p>
+        <section className="app-panel p-6">
+          <p className="app-kicker">Executive Summary</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Immediate readout
           </h2>
@@ -496,7 +483,7 @@ export function ReportView({
             {report.executive_summary}
           </p>
 
-          <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
+          <div className="app-subpanel mt-6 p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Critical vulnerabilities
             </p>
@@ -505,7 +492,7 @@ export function ReportView({
                 {report.critical_vulnerabilities.map((item) => (
                   <div
                     key={item}
-                    className="rounded-[20px] border border-rose-300/15 bg-rose-400/[0.08] px-4 py-3 text-sm leading-7 text-rose-50/90"
+                    className="app-subpanel px-4 py-3 text-sm leading-7 text-slate-300"
                   >
                     {item}
                   </div>
@@ -526,11 +513,9 @@ export function ReportView({
         {summaryCards.map(({ label, value, tone, Icon }) => (
           <article
             key={label}
-            className="rounded-[26px] border border-white/10 bg-[rgba(15,22,41,0.84)] p-5 shadow-[0_24px_80px_rgba(3,8,18,0.28)]"
+            className="app-panel p-5"
           >
-            <div
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${tone}`}
-            >
+            <div className={tone}>
               <Icon className="h-3.5 w-3.5" />
               {label}
             </div>
@@ -540,10 +525,8 @@ export function ReportView({
       </section>
 
       <div className="grid gap-8 lg:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[30px] border border-white/10 bg-[rgba(15,22,41,0.86)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
-          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-            Attack Pattern Analysis
-          </p>
+        <section className="app-panel p-6">
+          <p className="app-kicker">Attack Pattern Analysis</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             How the attacker won ground
           </h2>
@@ -552,23 +535,21 @@ export function ReportView({
           </p>
         </section>
 
-        <section className="rounded-[30px] border border-white/10 bg-[rgba(15,22,41,0.86)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+        <section className="app-panel p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                Report Metadata
-              </p>
+              <p className="app-kicker">Report Metadata</p>
               <h2 className="mt-2 text-2xl font-semibold text-slate-50">
                 Match context
               </h2>
             </div>
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">
+            <div className="app-chip">
               Report {report.report_id}
             </div>
           </div>
 
           <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+            <div className="app-subpanel px-4 py-4">
               <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                 Criminal Persona
               </dt>
@@ -576,7 +557,7 @@ export function ReportView({
                 {report.criminal_persona || "unknown"}
               </dd>
             </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+            <div className="app-subpanel px-4 py-4">
               <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                 Total Fraud Transactions
               </dt>
@@ -584,7 +565,7 @@ export function ReportView({
                 {report.total_fraud_transactions}
               </dd>
             </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+            <div className="app-subpanel px-4 py-4">
               <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                 Share URL
               </dt>
@@ -592,21 +573,21 @@ export function ReportView({
                 {match.share_url || "Unavailable"}
               </dd>
             </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+            <div className="app-subpanel px-4 py-4">
               <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                 Downloads
               </dt>
               <dd className="mt-2 flex flex-wrap gap-2 text-sm font-medium text-slate-100">
                 <a
                   href={pdfExportUrl}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-cyan-100 transition hover:bg-cyan-400/15"
+                  className="app-button"
                 >
                   <Download className="h-3.5 w-3.5" />
                   PDF
                 </a>
                 <a
                   href={jsonExportUrl}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-100 transition hover:bg-white/10"
+                  className="app-button app-button-secondary"
                 >
                   <Download className="h-3.5 w-3.5" />
                   JSON
@@ -620,14 +601,12 @@ export function ReportView({
       <section className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-              Security Gaps
-            </p>
+            <p className="app-kicker">Security Gaps</p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-50">
               Where the defender was blind
             </h2>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
+          <div className="app-chip app-chip-warning">
             <Waypoints className="h-3.5 w-3.5" />
             {report.security_gaps.length} gaps detected
           </div>
@@ -640,7 +619,7 @@ export function ReportView({
             ))}
           </div>
         ) : (
-          <section className="rounded-[28px] border border-emerald-300/20 bg-emerald-400/10 p-6 text-emerald-50 shadow-[0_24px_80px_rgba(3,8,18,0.28)]">
+          <section className="app-panel p-6 text-slate-200">
             No repeated security gaps were detected in this match.
           </section>
         )}
@@ -649,14 +628,12 @@ export function ReportView({
       <section className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-              Recommendations
-            </p>
+            <p className="app-kicker">Recommendations</p>
             <h2 className="mt-2 text-3xl font-semibold text-slate-50">
               What the defender should change next
             </h2>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">
+          <div className="app-chip app-chip-accent">
             <Sparkles className="h-3.5 w-3.5" />
             {report.recommendations.length} actions generated
           </div>
@@ -671,7 +648,7 @@ export function ReportView({
               />
             ))
           ) : (
-            <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.84)] p-6 text-slate-200 shadow-[0_24px_80px_rgba(3,8,18,0.28)]">
+            <section className="app-panel p-6 text-slate-200">
               No recommendations were generated for this match.
             </section>
           )}

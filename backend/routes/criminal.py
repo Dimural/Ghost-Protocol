@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from backend.agents.criminal_agent import CriminalAgent
 from backend.config import USE_MOCK_LLM
+from backend.core.adaptation_analysis import AdaptationEvidence, analyze_round_adaptation
 from backend.core.match_state import (
     AttackRound,
     AdaptationNotification,
@@ -50,7 +51,7 @@ class GenerateAttackResponse(BaseModel):
     total_rounds: int
     status: Literal["running", "complete"]
     target_persona_id: str
-    mode: Literal["mock", "gemini"]
+    mode: Literal["mock", "groq"]
 
 
 class AdaptAttackRequest(BaseModel):
@@ -61,13 +62,14 @@ class AdaptAttackRequest(BaseModel):
 class AdaptAttackResponse(BaseModel):
     new_attacks: list[Transaction]
     adaptation_reasoning: str
+    adaptation_evidence: AdaptationEvidence | None = None
     match_id: str
     round: int
     total_rounds: int
     status: Literal["running", "complete"]
     cycle_complete: bool
     notification: AdaptationNotification | None = None
-    mode: Literal["mock", "gemini"]
+    mode: Literal["mock", "groq"]
 
 
 @router.post("/generate", response_model=GenerateAttackResponse)
@@ -108,6 +110,7 @@ async def generate_attack(request: GenerateAttackRequest) -> GenerateAttackRespo
                 round=1,
                 attacks=attacks,
                 strategy_notes=agent.last_strategy_notes,
+                runtime_mode=agent.last_runtime_mode,
                 created_at=utc_now(),
             )
         ],
@@ -133,7 +136,7 @@ async def generate_attack(request: GenerateAttackRequest) -> GenerateAttackRespo
         total_rounds=request.total_rounds,
         status="running",
         target_persona_id=target_persona.id,
-        mode=_runtime_mode(),
+        mode=agent.last_runtime_mode,
     )
 
 
@@ -193,11 +196,13 @@ async def adapt_attack(request: AdaptAttackRequest) -> AdaptAttackResponse:
             status="complete",
             cycle_complete=True,
             notification=None,
+            adaptation_evidence=None,
             mode=_runtime_mode(),
         )
 
     agent = CriminalAgent(persona=state.criminal_persona)
     new_attacks = await agent.adapt(state.last_attacks, request.caught_ids)
+    adaptation_evidence = analyze_round_adaptation(state.last_attacks, new_attacks)
 
     next_round = state.current_round + 1
     notification = AdaptationNotification(
@@ -205,6 +210,8 @@ async def adapt_attack(request: AdaptAttackRequest) -> AdaptAttackResponse:
         total_rounds=state.total_rounds,
         reasoning=agent.last_adaptation_reasoning,
         banner_message=_build_banner_message(next_round, state.total_rounds, agent.last_adaptation_reasoning),
+        verified=adaptation_evidence.verified,
+        evidence_summary=adaptation_evidence.summary,
         created_at=utc_now(),
     )
     updated_rounds.append(
@@ -213,6 +220,8 @@ async def adapt_attack(request: AdaptAttackRequest) -> AdaptAttackResponse:
             attacks=new_attacks,
             strategy_notes=agent.last_strategy_notes,
             adaptation_reasoning=agent.last_adaptation_reasoning,
+            adaptation_evidence=adaptation_evidence,
+            runtime_mode=agent.last_runtime_mode,
             notification=notification,
             created_at=utc_now(),
         )
@@ -240,7 +249,8 @@ async def adapt_attack(request: AdaptAttackRequest) -> AdaptAttackResponse:
         status="running",
         cycle_complete=False,
         notification=notification,
-        mode=_runtime_mode(),
+        adaptation_evidence=adaptation_evidence,
+        mode=agent.last_runtime_mode,
     )
 
 
@@ -271,8 +281,8 @@ def _stable_default_persona_id(match_id: str) -> str:
     return PERSONAS[index].id
 
 
-def _runtime_mode() -> Literal["mock", "gemini"]:
-    return "mock" if USE_MOCK_LLM else "gemini"
+def _runtime_mode() -> Literal["mock", "groq"]:
+    return "mock" if USE_MOCK_LLM else "groq"
 
 
 def _build_banner_message(round_number: int, total_rounds: int, reasoning: str) -> str:

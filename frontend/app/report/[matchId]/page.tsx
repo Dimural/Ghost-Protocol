@@ -67,9 +67,9 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   if (isLoading) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-7xl">
-          <div className="rounded-[32px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-8 text-slate-200 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="app-panel p-8 text-slate-200">
             Loading report for match {matchId}...
           </div>
         </div>
@@ -79,9 +79,9 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   if (errorMessage || !match || !report) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-[32px] border border-rose-300/20 bg-rose-400/10 p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="app-panel p-8">
             <div className="flex items-center gap-3 text-rose-100">
               <ShieldAlert className="h-6 w-6" />
               <h1 className="text-2xl font-semibold">Report unavailable</h1>
@@ -93,14 +93,14 @@ export default function ReportPage({ params }: ReportPageProps) {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href={`/match/${matchId}`}
-                className="inline-flex items-center gap-2 rounded-full border border-rose-200/20 bg-white/10 px-5 py-2.5 text-sm font-medium text-rose-50 transition hover:bg-white/15"
+                className="app-button app-button-danger"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to War Room
               </Link>
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-white/10"
+                className="app-button app-button-secondary"
               >
                 Return to setup
               </Link>
@@ -112,7 +112,7 @@ export default function ReportPage({ params }: ReportPageProps) {
   }
 
   return (
-    <main className="px-6 py-8 sm:px-8 lg:px-12">
+    <main className="app-page">
       <ReportView
         matchId={matchId}
         match={match}

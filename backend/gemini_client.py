@@ -8,6 +8,7 @@ avoid brittle prompt-only parsing.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -23,12 +24,24 @@ class GeminiAPIError(RuntimeError):
         self.status_code = status_code
 
 
+class GeminiQuotaExceededError(GeminiAPIError):
+    """Raised when Gemini rejects requests because the project quota is exhausted."""
+
+
 def summarize_exception(exc: Exception, *, limit: int = 220) -> str:
     """Return a compact single-line error summary safe for UI/status messages."""
     summary = " ".join(str(exc).split()).strip() or exc.__class__.__name__
     if len(summary) <= limit:
         return summary
     return summary[: limit - 3].rstrip() + "..."
+
+
+def is_quota_exhausted_error(exc: Exception) -> bool:
+    if isinstance(exc, GeminiQuotaExceededError):
+        return True
+    if isinstance(exc, GeminiAPIError) and exc.status_code == 429:
+        return "RESOURCE_EXHAUSTED" in str(exc).upper()
+    return False
 
 
 class GeminiClient:
@@ -38,12 +51,15 @@ class GeminiClient:
         api_key: str | None = GEMINI_API_KEY,
         base_url: str = GEMINI_API_BASE_URL,
         timeout_seconds: float = 25.0,
+        quota_cooldown_minutes: int = 15,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
+        self._quota_cooldown_minutes = max(1, quota_cooldown_minutes)
         self._transport = transport
+        self._quota_exhausted_until: datetime | None = None
 
     async def generate_json(
         self,
@@ -57,6 +73,11 @@ class GeminiClient:
     ) -> Any:
         if not self._api_key:
             raise RuntimeError("Gemini API key is missing; cannot run Gemini request.")
+        if self.quota_cooldown_active():
+            raise GeminiQuotaExceededError(
+                "Gemini quota is currently exhausted; continuing in local fallback mode.",
+                status_code=429,
+            )
 
         request_payload = self._build_request_payload(
             prompt=prompt,
@@ -140,6 +161,16 @@ class GeminiClient:
             "generationConfig": generation_config,
         }
 
+    def current_runtime_mode(self) -> str:
+        if not self._api_key or self.quota_cooldown_active():
+            return "mock"
+        return "gemini"
+
+    def quota_cooldown_active(self) -> bool:
+        if self._quota_exhausted_until is None:
+            return False
+        return datetime.now(timezone.utc) < self._quota_exhausted_until
+
     def _build_api_error(self, model: str, response: httpx.Response) -> GeminiAPIError:
         message = f"Gemini API rejected model '{model}' with HTTP {response.status_code}."
         try:
@@ -154,6 +185,17 @@ class GeminiClient:
         if isinstance(error_payload, dict):
             status = error_payload.get("status")
             detail = error_payload.get("message")
+            if response.status_code == 429 and status == "RESOURCE_EXHAUSTED":
+                self._quota_exhausted_until = datetime.now(timezone.utc) + timedelta(
+                    minutes=self._quota_cooldown_minutes
+                )
+                quota_message = (
+                    "Gemini quota is exhausted; switching to local fallback mode "
+                    f"for about {self._quota_cooldown_minutes} minutes."
+                )
+                if detail:
+                    quota_message = f"{quota_message} Google response: {detail}"
+                return GeminiQuotaExceededError(quota_message, status_code=response.status_code)
             if status and detail:
                 message = (
                     f"Gemini API rejected model '{model}' with HTTP {response.status_code} "

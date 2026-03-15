@@ -138,7 +138,7 @@ export type MatchReportResponse = {
   report_id: string;
   match_id: string;
   generated_at: string;
-  runtime_mode: "mock" | "gemini";
+  runtime_mode: "mock" | "groq";
   scenario_name: string;
   criminal_persona?: CriminalPersona | null;
   rounds_completed: number;

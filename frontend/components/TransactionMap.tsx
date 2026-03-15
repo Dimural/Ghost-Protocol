@@ -255,30 +255,28 @@ export function TransactionMap({ entries }: TransactionMapProps) {
   ).length;
 
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.84)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
+    <section className="app-panel p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-            World Map
-          </p>
+          <p className="app-kicker">World Map</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Transaction origin routes
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
             Each processed transaction draws a route from its origin into
-            Toronto. Normal traffic stays cool blue, while fraud origins burn
-            hot red and pulse on the map.
+            Toronto. Legitimate and fraudulent traffic are separated with
+            subdued route styling so location patterns stay legible.
           </p>
         </div>
 
-        <div className="rounded-full border border-cyan-300/20 bg-cyan-400/10 p-3 text-cyan-100">
+        <div className="app-chip app-chip-accent rounded-full p-3">
           <Globe2 className="h-5 w-5" />
         </div>
       </div>
 
-      <div className="mt-6 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(4,9,18,0.96),rgba(8,13,24,0.88))] p-4">
+      <div className="app-subpanel mt-6 p-4">
         <div className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
-          <div className="overflow-hidden rounded-[22px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(0,212,255,0.1),transparent_42%),linear-gradient(180deg,rgba(8,13,24,0.98),rgba(5,9,18,0.95))] p-3">
+          <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(13,16,22,0.94),rgba(10,12,17,0.96))] p-3">
             <ComposableMap
               projection="geoEqualEarth"
               projectionConfig={{ scale: 152, center: [8, 18] }}
@@ -349,7 +347,7 @@ export function TransactionMap({ entries }: TransactionMapProps) {
                             key={`route-${entry.id}`}
                             d={routePath}
                             fill="none"
-                            stroke={isFraud ? "#ff3b3b" : "#00d4ff"}
+                            stroke={isFraud ? "#db8a8a" : "#9ab6e8"}
                             strokeWidth={isFraud ? 1.8 : 1.15}
                             strokeLinecap="round"
                             strokeOpacity={opacity}
@@ -394,7 +392,7 @@ export function TransactionMap({ entries }: TransactionMapProps) {
                               <circle
                                 r={8}
                                 fill="none"
-                                stroke="rgba(255,59,59,0.8)"
+                                stroke="rgba(219,138,138,0.72)"
                                 strokeWidth="1.2"
                                 strokeOpacity={opacity}
                                 className="map-pulse-ring"
@@ -402,7 +400,7 @@ export function TransactionMap({ entries }: TransactionMapProps) {
                             ) : null}
                             <circle
                               r={isFraud ? 4.2 : 3.2}
-                              fill={isFraud ? "#ff3b3b" : "#00d4ff"}
+                              fill={isFraud ? "#db8a8a" : "#9ab6e8"}
                               fillOpacity={opacity}
                               stroke="rgba(255,255,255,0.28)"
                               strokeWidth={0.6}
@@ -415,13 +413,13 @@ export function TransactionMap({ entries }: TransactionMapProps) {
                       <g>
                         <circle
                           r={10}
-                          fill="rgba(0,212,255,0.12)"
-                          stroke="rgba(0,212,255,0.38)"
+                          fill="rgba(154,182,232,0.14)"
+                          stroke="rgba(154,182,232,0.42)"
                           className="map-hq-pulse"
                         />
                         <circle
                           r={4.5}
-                          fill="#00d4ff"
+                          fill="#9ab6e8"
                           stroke="rgba(255,255,255,0.6)"
                           strokeWidth={0.8}
                         />
@@ -443,7 +441,7 @@ export function TransactionMap({ entries }: TransactionMapProps) {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-[22px] border border-white/10 bg-slate-950/45 p-5">
+            <div className="app-subpanel p-5">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Route Window
               </p>
@@ -456,7 +454,7 @@ export function TransactionMap({ entries }: TransactionMapProps) {
               </p>
             </div>
 
-            <div className="rounded-[22px] border border-white/10 bg-slate-950/45 p-5">
+            <div className="app-subpanel p-5">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Fraud Origins
               </p>
@@ -469,7 +467,7 @@ export function TransactionMap({ entries }: TransactionMapProps) {
               </p>
             </div>
 
-            <div className="rounded-[22px] border border-white/10 bg-slate-950/45 p-5">
+            <div className="app-subpanel p-5">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                 Legend
               </p>
@@ -486,7 +484,7 @@ export function TransactionMap({ entries }: TransactionMapProps) {
                   Fraud origin with pulse ring
                 </div>
                 <div className="flex items-center gap-3">
-                  <MapPinned className="h-4 w-4 text-cyan-200" />
+                  <MapPinned className="h-4 w-4 text-slate-300" />
                   Routes converge on Toronto HQ
                 </div>
                 <div className="flex items-center gap-3">

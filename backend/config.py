@@ -1,7 +1,7 @@
 """
 Ghost Protocol — Configuration
 Loads environment variables from .env file.
-If GEMINI_API_KEY is missing/empty, all AI agents fall back to mock responses automatically.
+If GROQ_API_KEY is missing/empty, all Groq-backed agents fall back to mock responses automatically.
 """
 from dotenv import load_dotenv
 import os
@@ -12,6 +12,7 @@ env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # --- LLM ---
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip() or None
 # Support both legacy GEMINI_API_KEY and the newer GOOGLE_API_KEY naming.
 GEMINI_API_KEY = (
     os.getenv("GOOGLE_API_KEY", "").strip()
@@ -36,9 +37,9 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 SECRET_KEY = os.getenv("SECRET_KEY", "change-this-in-production")
 
 # --- Derived flags ---
-USE_MOCK_LLM = GEMINI_API_KEY is None
+USE_MOCK_LLM = not bool(GROQ_API_KEY)
 """
 When True, all AI agents (Criminal, Police, Generator, Report) will return
-hardcoded mock data instead of calling the Gemini API.
-Set GEMINI_API_KEY in .env to activate real LLM calls — zero code changes needed.
+hardcoded mock data instead of calling Groq-backed runtime paths.
+Set GROQ_API_KEY in .env to activate real Groq calls — zero code changes needed.
 """

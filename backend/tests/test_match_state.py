@@ -21,6 +21,7 @@ from backend.main import app
 def isolate_match_state_store(tmp_path, monkeypatch):
     monkeypatch.setattr(MATCH_STATE_STORE, "_fallback_path", tmp_path / "matches.json")
     monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", None)
+    monkeypatch.setattr("backend.agents.criminal_agent.USE_MOCK_LLM", True)
     MATCH_STATE_STORE.delete("match-roundtrip")
     MATCH_STATE_STORE.delete("match-legacy")
     MATCH_STATE_STORE.delete("match-criminal")
@@ -213,6 +214,10 @@ def test_adapt_attack_appends_next_round_into_match_state():
     assert len(state.transactions) == 6
     assert state.latest_notification is not None
     assert state.latest_notification.round == 2
+    assert state.attack_rounds[1].adaptation_evidence is not None
+    assert state.attack_rounds[1].adaptation_evidence.verified is True
+    assert state.attack_rounds[1].runtime_mode == "mock"
+    assert "Verified adaptation" in state.attack_rounds[1].adaptation_evidence.summary
 
 
 def test_expired_match_blocks_attack_generation_and_adaptation():

@@ -69,22 +69,22 @@ const AUTOPLAY_INTERVAL_MS = 650;
 const OUTCOME_TONES: Record<OutcomeLabel, OutcomeTone> = {
   true_positive: {
     label: "Caught",
-    className: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+    className: "app-chip app-chip-success",
     Icon: ShieldCheck,
   },
   false_positive: {
     label: "False Alarm",
-    className: "border-amber-300/20 bg-amber-300/10 text-amber-100",
+    className: "app-chip app-chip-warning",
     Icon: ShieldAlert,
   },
   false_negative: {
     label: "Missed",
-    className: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+    className: "app-chip app-chip-danger",
     Icon: ShieldX,
   },
   true_negative: {
     label: "Approved Legit",
-    className: "border-cyan-300/20 bg-cyan-400/10 text-cyan-100",
+    className: "app-chip app-chip-accent",
     Icon: ShieldCheck,
   },
 };
@@ -251,9 +251,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
 
   if (isLoading) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-6xl">
-          <div className="rounded-[32px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-8 text-slate-200 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="app-panel p-8 text-slate-200">
             Loading replay for match {matchId}...
           </div>
         </div>
@@ -263,9 +263,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
 
   if (errorMessage || !match) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-[32px] border border-rose-300/20 bg-rose-400/10 p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="app-panel p-8">
             <div className="flex items-center gap-3 text-rose-100">
               <ShieldAlert className="h-6 w-6" />
               <h1 className="text-2xl font-semibold">Replay unavailable</h1>
@@ -275,7 +275,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex items-center gap-2 rounded-full border border-rose-200/20 bg-white/10 px-5 py-2.5 text-sm font-medium text-rose-50 transition hover:bg-white/15"
+              className="app-button app-button-danger mt-6"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to setup
@@ -317,9 +317,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
 
   if (!currentStep) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-6xl space-y-8">
-          <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <section className="app-hero p-8">
             <Link
               href={`/match/${matchId}`}
               className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
@@ -327,9 +327,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               <ArrowLeft className="h-4 w-4" />
               Back to live match
             </Link>
-            <p className="mt-5 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-              Replay
-            </p>
+            <p className="app-kicker mt-5">Replay</p>
             <h1 className="mt-2 text-4xl font-semibold text-slate-50">
               Heist replay pending
             </h1>
@@ -340,7 +338,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
             </p>
           </section>
 
-          <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.84)] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <section className="app-panel p-8">
             <p className="text-sm leading-7 text-slate-300">
               Once Ghost Protocol has at least one defender decision, replay
               mode will let you step forward and backward through the match,
@@ -351,7 +349,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               {match.status === "complete" || match.report_id ? (
                 <Link
                   href={`/report/${matchId}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-2.5 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/15"
+                  className="app-button app-button-success"
                 >
                   <FileText className="h-4 w-4" />
                   Open post-game report
@@ -359,13 +357,13 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               ) : null}
               <Link
                 href={`/match/${matchId}`}
-                className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-5 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                className="app-button"
               >
                 Return to War Room
               </Link>
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-white/10"
+                className="app-button app-button-secondary"
               >
                 Back to setup
               </Link>
@@ -380,9 +378,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
   const OutcomeIcon = outcomeTone.Icon;
 
   return (
-    <main className="px-6 py-8 sm:px-8 lg:px-12">
+    <main className="app-page">
       <div className="mx-auto max-w-7xl space-y-8">
-        <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+        <section className="app-hero p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <Link
@@ -392,9 +390,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                 <ArrowLeft className="h-4 w-4" />
                 Back to live match
               </Link>
-              <p className="mt-5 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                Replay
-              </p>
+              <p className="app-kicker mt-5">Replay</p>
               <h1 className="mt-2 text-4xl font-semibold text-slate-50">
                 Heist replay
               </h1>
@@ -405,7 +401,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   Match
                 </p>
@@ -413,7 +409,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                   {match.status === "complete" ? "Completed" : "Partial Replay"}
                 </p>
               </div>
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   Steps
                 </p>
@@ -427,7 +423,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
             <div className="mt-6">
               <Link
                 href={`/report/${matchId}`}
-                className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/15"
+                className="app-button app-button-success"
               >
                 <FileText className="h-4 w-4" />
                 Open post-game report
@@ -437,12 +433,10 @@ export default function ReplayPage({ params }: ReplayPageProps) {
         </section>
 
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-          <section className="rounded-[30px] border border-white/10 bg-[rgba(15,22,41,0.86)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <section className="app-panel p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                  Replay Controls
-                </p>
+                <p className="app-kicker">Replay Controls</p>
                 <h2 className="mt-2 text-2xl font-semibold text-slate-50">
                   Step {currentStepIndex + 1} of {replaySteps.length}
                 </h2>
@@ -457,7 +451,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                   type="button"
                   onClick={handlePreviousStep}
                   disabled={currentStepIndex === 0}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="app-button app-button-secondary disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Previous
@@ -465,7 +459,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                 <button
                   type="button"
                   onClick={handleTogglePlayback}
-                  className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2.5 text-sm font-medium text-amber-100 transition hover:bg-amber-300/15"
+                  className="app-button"
                 >
                   {isPlaying ? (
                     <Pause className="h-4 w-4" />
@@ -478,7 +472,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                   type="button"
                   onClick={handleNextStep}
                   disabled={currentStepIndex >= replaySteps.length - 1}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="app-button app-button-secondary disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
                   <ChevronRight className="h-4 w-4" />
@@ -486,10 +480,10 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               </div>
             </div>
 
-            <div className="mt-6 rounded-[24px] border border-white/10 bg-slate-950/45 p-5">
+            <div className="app-subpanel-strong mt-6 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-200" />
+                <div className="app-chip">
+                  <Sparkles className="h-3.5 w-3.5 text-slate-300" />
                   Step progress
                 </div>
                 <p className="text-sm font-medium text-slate-300">
@@ -498,23 +492,21 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               </div>
               <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/8">
                 <div
-                  className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,215,0,0.9),rgba(0,212,255,0.88))] transition-all duration-300"
+                  className="h-full rounded-full bg-[linear-gradient(90deg,rgba(154,182,232,0.92),rgba(207,176,122,0.82))] transition-all duration-300"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
             </div>
 
-            <div className="mt-6 rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(0,212,255,0.1),transparent_42%),linear-gradient(180deg,rgba(8,13,24,0.98),rgba(5,9,18,0.95))] p-6">
+            <div className="app-subpanel-strong mt-6 p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="flex flex-wrap gap-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-100">
+                    <div className="app-chip app-chip-accent">
                       <Swords className="h-3.5 w-3.5" />
                       Round {currentStep.round}
                     </div>
-                    <div
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${outcomeTone.className}`}
-                    >
+                    <div className={outcomeTone.className}>
                       <OutcomeIcon className="h-3.5 w-3.5" />
                       {outcomeTone.label}
                     </div>
@@ -533,7 +525,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                   </p>
                 </div>
 
-                <div className="rounded-[22px] border border-white/10 bg-white/5 px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                     Defender verdict
                   </p>
@@ -547,7 +539,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               </div>
 
               <dl className="mt-6 grid gap-4 md:grid-cols-3">
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-400">
                     <Clock3 className="h-3.5 w-3.5" />
                     Timestamp
@@ -556,7 +548,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                     {formatTimestamp(currentStep.transaction.timestamp)}
                   </dd>
                 </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-400">
                     <MapPinned className="h-3.5 w-3.5" />
                     Location
@@ -566,7 +558,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                     {currentStep.transaction.location_country}
                   </dd>
                 </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-400">
                     <CircleDollarSign className="h-3.5 w-3.5" />
                     Ground truth
@@ -580,14 +572,12 @@ export default function ReplayPage({ params }: ReplayPageProps) {
           </section>
 
           <div className="space-y-8">
-            <section className="rounded-[30px] border border-white/10 bg-[rgba(15,22,41,0.86)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
-              <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                Criminal strategy
-              </p>
+            <section className="app-panel p-6">
+              <p className="app-kicker">Criminal strategy</p>
               <h2 className="mt-2 text-2xl font-semibold text-slate-50">
                 Why this step exists
               </h2>
-              <blockquote className="mt-5 border-l border-amber-300/20 pl-4 text-lg leading-8 text-slate-100">
+              <blockquote className="mt-5 border-l border-white/10 pl-4 text-lg leading-8 text-slate-100">
                 <span aria-hidden="true">&ldquo;</span>
                 {currentStep.strategyNote}
                 <span aria-hidden="true">&rdquo;</span>
@@ -595,7 +585,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
 
               {currentStep.roundStrategy &&
               currentStep.roundStrategy !== currentStep.strategyNote ? (
-                <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+                <div className="app-subpanel mt-5 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Round strategy
                   </p>
@@ -606,37 +596,35 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               ) : null}
 
               {currentStep.adaptationReasoning ? (
-                <div className="mt-4 rounded-[22px] border border-amber-300/15 bg-amber-300/[0.08] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-amber-100/80">
+                <div className="app-subpanel mt-4 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Adaptation reasoning
                   </p>
-                  <p className="mt-3 text-sm leading-7 text-amber-50/90">
+                  <p className="mt-3 text-sm leading-7 text-slate-300">
                     {currentStep.adaptationReasoning}
                   </p>
                 </div>
               ) : null}
 
               {currentStep.notification ? (
-                <div className="mt-4 rounded-[22px] border border-cyan-300/15 bg-cyan-400/[0.08] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">
+                <div className="app-subpanel mt-4 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Banner moment
                   </p>
-                  <p className="mt-3 text-sm leading-7 text-cyan-50/90">
+                  <p className="mt-3 text-sm leading-7 text-slate-300">
                     {currentStep.notification.banner_message}
                   </p>
                 </div>
               ) : null}
             </section>
 
-            <section className="rounded-[30px] border border-white/10 bg-[rgba(15,22,41,0.86)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
-              <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                Defender analysis
-              </p>
+            <section className="app-panel p-6">
+              <p className="app-kicker">Defender analysis</p>
               <h2 className="mt-2 text-2xl font-semibold text-slate-50">
                 Decision context
               </h2>
               <dl className="mt-5 space-y-4">
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Verdict
                   </dt>
@@ -644,7 +632,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                     {currentStep.defenderDecision.decision}
                   </dd>
                 </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Confidence
                   </dt>
@@ -652,7 +640,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                     {formatConfidence(currentStep.defenderDecision.confidence)}
                   </dd>
                 </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Outcome
                   </dt>
@@ -660,7 +648,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                     {currentStep.isCorrect ? "Correct call" : "Defender mistake"}
                   </dd>
                 </div>
-                <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-4">
+                <div className="app-subpanel px-4 py-4">
                   <dt className="text-xs uppercase tracking-[0.18em] text-slate-400">
                     Reason
                   </dt>
@@ -672,10 +660,8 @@ export default function ReplayPage({ params }: ReplayPageProps) {
               </dl>
             </section>
 
-            <section className="rounded-[30px] border border-white/10 bg-[rgba(15,22,41,0.86)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
-              <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                Replay queue
-              </p>
+            <section className="app-panel p-6">
+              <p className="app-kicker">Replay queue</p>
               <h2 className="mt-2 text-2xl font-semibold text-slate-50">
                 Jump to any step
               </h2>
@@ -692,9 +678,9 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                         setIsPlaying(false);
                         setCurrentStepIndex(index);
                       }}
-                      className={`w-full rounded-[20px] border px-4 py-3 text-left transition ${
+                      className={`w-full rounded-[18px] border px-4 py-3 text-left transition ${
                         isActive
-                          ? "border-cyan-300/30 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(34,211,238,0.14)]"
+                          ? "border-[rgba(154,182,232,0.28)] bg-[rgba(154,182,232,0.1)] shadow-[0_0_0_1px_rgba(154,182,232,0.08)]"
                           : "border-white/10 bg-white/[0.03] hover:bg-white/[0.05]"
                       }`}
                     >
@@ -711,9 +697,7 @@ export default function ReplayPage({ params }: ReplayPageProps) {
                             )}
                           </p>
                         </div>
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${stepTone.className}`}
-                        >
+                        <span className={stepTone.className}>
                           {stepTone.label}
                         </span>
                       </div>

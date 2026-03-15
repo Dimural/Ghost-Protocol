@@ -2,12 +2,13 @@
 Ghost Protocol — Post-Game Report Generator
 
 Builds and persists a structured security report for completed matches. Without
-`GEMINI_API_KEY` it returns a deterministic professional mock report so the
+`GROQ_API_KEY` it returns a deterministic professional mock report so the
 demo stays fully functional offline.
 """
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 import uuid
 from collections import Counter
@@ -18,15 +19,16 @@ from typing import Any, Literal
 import redis
 from pydantic import BaseModel, Field
 
-from backend.config import GEMINI_PRO_MODEL, REDIS_URL, USE_MOCK_LLM
+from backend.config import GROQ_API_KEY, REDIS_URL, USE_MOCK_LLM
 from backend.core.blind_spot_detector import BlindSpot, BlindSpotCategory, BlindSpotDetector
 from backend.core.match_state import MATCH_STATE_STORE, MatchState, utc_now
 from backend.core.referee import MatchScore, RefereeEngine
-from backend.gemini_client import GEMINI_CLIENT
 
 RiskRating = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
-RuntimeMode = Literal["mock", "gemini"]
+RuntimeMode = Literal["mock", "groq"]
 RecommendationPriority = Literal["HIGH", "MEDIUM", "LOW"]
+GROQ_REPORT_MODEL = "llama-3.3-70b-versatile"
+logger = logging.getLogger(__name__)
 
 REPORT_PROMPT = """
 You are a senior cybersecurity analyst reviewing the results of a fraud simulation.
@@ -280,12 +282,12 @@ class ReportGenerator:
         final_score = self._derive_score(match_state)
         summary = self._build_match_summary(match_state, blind_spots, final_score)
 
-        runtime_mode: RuntimeMode = "mock" if USE_MOCK_LLM else "gemini"
+        runtime_mode: RuntimeMode = "mock" if USE_MOCK_LLM else "groq"
         try:
             if USE_MOCK_LLM:
                 sections = self._build_mock_sections(match_state, blind_spots, summary)
             else:
-                sections = await self._build_gemini_sections(match_state, blind_spots, summary)
+                sections = await self._build_groq_sections(match_state, blind_spots, summary)
         except Exception:
             runtime_mode = "mock"
             sections = self._build_mock_sections(match_state, blind_spots, summary)
@@ -362,12 +364,14 @@ class ReportGenerator:
             "risk_rating": risk_rating,
         }
 
-    async def _build_gemini_sections(
+    async def _build_groq_sections(
         self,
         match_state: MatchState,
         blind_spots: list[BlindSpot],
         summary: dict[str, Any],
     ) -> dict[str, Any]:
+        from groq import AsyncGroq
+
         prompt = REPORT_PROMPT.format(
             scenario_name=match_state.scenario_name,
             criminal_persona=match_state.criminal_persona or "unknown",
@@ -380,13 +384,22 @@ class ReportGenerator:
             money_lost=f"{summary['money_lost']:.2f}",
             blind_spots=self._format_blind_spots_for_prompt(blind_spots),
         )
-        payload = await GEMINI_CLIENT.generate_json(
-            model=GEMINI_PRO_MODEL,
-            prompt=prompt,
-            response_schema=REPORT_RESPONSE_SCHEMA,
-            temperature=0.3,
-            max_output_tokens=4096,
-        )
+        client = AsyncGroq(api_key=GROQ_API_KEY)
+        try:
+            response = await client.chat.completions.create(
+                model=GROQ_REPORT_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+            )
+        except Exception as exc:
+            if self._is_rate_limited_error(exc):
+                logger.warning("Groq report generation hit a rate limit; using mock report.")
+                raise RuntimeError("Groq report generation hit a 429 rate limit.") from exc
+            raise
+
+        raw_text = (response.choices[0].message.content or "").strip()
+        cleaned = self._strip_markdown_fences(raw_text)
+        payload = json.loads(cleaned)
         return self._normalize_llm_sections(payload)
 
     def _determine_risk_rating(self, match_state: MatchState, summary: dict[str, Any]) -> RiskRating:
@@ -682,22 +695,22 @@ class ReportGenerator:
 
     def _normalize_llm_sections(self, payload: Any) -> dict[str, Any]:
         if not isinstance(payload, dict):
-            raise ValueError("Gemini report response was not a JSON object.")
+            raise ValueError("Groq report response was not a JSON object.")
 
         executive_summary = str(payload.get("executive_summary", "")).strip()
         attack_pattern_analysis = str(payload.get("attack_pattern_analysis", "")).strip()
         risk_rating = str(payload.get("risk_rating", "")).strip().upper()
 
         if not executive_summary or not attack_pattern_analysis:
-            raise ValueError("Gemini report response omitted required text sections.")
+            raise ValueError("Groq report response omitted required text sections.")
         if risk_rating not in {"LOW", "MEDIUM", "HIGH", "CRITICAL"}:
-            raise ValueError("Gemini report response returned an invalid risk rating.")
+            raise ValueError("Groq report response returned an invalid risk rating.")
 
         critical_vulnerabilities = payload.get("critical_vulnerabilities")
         if isinstance(critical_vulnerabilities, str):
             critical_vulnerabilities = [critical_vulnerabilities]
         if not isinstance(critical_vulnerabilities, list):
-            raise ValueError("Gemini report response returned invalid vulnerabilities.")
+            raise ValueError("Groq report response returned invalid vulnerabilities.")
 
         raw_recommendations = payload.get("recommendations")
         if raw_recommendations is None and "recommended_fixes" in payload:
@@ -706,7 +719,7 @@ class ReportGenerator:
                 legacy_recommendations = [legacy_recommendations]
             raw_recommendations = legacy_recommendations
         if not isinstance(raw_recommendations, list):
-            raise ValueError("Gemini report response returned invalid recommendations.")
+            raise ValueError("Groq report response returned invalid recommendations.")
 
         recommendations: list[Recommendation] = []
         for index, item in enumerate(raw_recommendations, start=1):
@@ -719,21 +732,21 @@ class ReportGenerator:
                         title=f"Recommendation {index}",
                         priority="MEDIUM",
                         action=text,
-                        rationale="Generated by Gemini from the completed match summary.",
+                        rationale="Generated by Groq from the completed match summary.",
                         code_hint=None,
                     )
                 )
                 continue
 
             if not isinstance(item, dict):
-                raise ValueError("Gemini report response returned an invalid recommendation item.")
+                raise ValueError("Groq report response returned an invalid recommendation item.")
 
             recommendation_payload = dict(item)
             priority = str(recommendation_payload.get("priority", "MEDIUM")).strip().upper()
             recommendation_payload["priority"] = priority if priority in {"HIGH", "MEDIUM", "LOW"} else "MEDIUM"
             recommendation_payload["title"] = str(recommendation_payload.get("title", "")).strip() or f"Recommendation {index}"
             recommendation_payload["action"] = str(recommendation_payload.get("action", "")).strip()
-            recommendation_payload["rationale"] = str(recommendation_payload.get("rationale", "")).strip() or "Generated by Gemini from the completed match summary."
+            recommendation_payload["rationale"] = str(recommendation_payload.get("rationale", "")).strip() or "Generated by Groq from the completed match summary."
             code_hint = recommendation_payload.get("code_hint")
             recommendation_payload["code_hint"] = None if code_hint in (None, "") else str(code_hint).strip()
             recommendations.append(Recommendation.model_validate(recommendation_payload))
@@ -752,6 +765,10 @@ class ReportGenerator:
             cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned
             cleaned = cleaned.rsplit("```", 1)[0]
         return cleaned.strip()
+
+    def _is_rate_limited_error(self, exc: Exception) -> bool:
+        error_str = str(exc).lower()
+        return any(token in error_str for token in ("429", "rate", "quota", "limit"))
 
     def _pattern_name_for_blind_spot(self, blind_spot: BlindSpot) -> str:
         labels: dict[BlindSpotCategory, str] = {

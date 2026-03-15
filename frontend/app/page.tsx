@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  ArrowDown,
   ArrowRight,
   BrainCircuit,
   Copy,
@@ -69,7 +70,7 @@ const READY_STATUS: ConnectionStatus = {
   state: "ready",
   label: "Ready",
   detail:
-    "Police AI is armed and ready to defend in mock mode with automatic live activation once a Gemini key exists.",
+    "Police AI is armed and ready to defend in mock mode with automatic live activation once a Groq key exists.",
 };
 
 const AWAITING_WEBHOOK_STATUS: ConnectionStatus = {
@@ -354,143 +355,144 @@ function HomeContent() {
   }
 
   return (
-    <main className="relative overflow-hidden px-6 py-8 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-7xl">
-        <section className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
-          <div className="space-y-8">
-            <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.88))] p-8 shadow-[0_30px_120px_rgba(2,6,23,0.55)]">
+    <main className="landing-shell relative overflow-hidden">
+      <section className="landing-section">
+        <div className="landing-grid">
+          <div className="landing-frame home-reveal-up lg:col-span-2">
+            <div className="landing-orbit" aria-hidden="true">
+              <span className="landing-orbit-line landing-orbit-line-ghost" />
+              <span className="landing-orbit-line landing-orbit-line-main" />
+              <span className="landing-orbit-line landing-orbit-line-accent" />
+            </div>
+
+            <div className="relative z-10 flex min-h-[78svh] flex-col justify-between p-8 sm:p-12 lg:p-16">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200">
+                <div className="landing-pill landing-pill-accent">
                   <Siren className="h-3.5 w-3.5" />
                   Ghost Protocol
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-rose-200">
-                  War Room Setup
-                </div>
+                <div className="landing-pill">Adversarial fraud simulation</div>
               </div>
 
-              <div className="mt-8 max-w-3xl">
-                <p className="text-sm uppercase tracking-[0.38em] text-slate-400">
-                  Adversarial AI Simulation Lab
+              <div className="max-w-5xl">
+                <p className="text-xs uppercase tracking-[0.38em] text-slate-500">
+                  Black-box pressure testing for fraud teams
                 </p>
-                <h1 className="mt-4 text-4xl font-semibold leading-tight text-slate-50 sm:text-5xl">
-                  Don&apos;t build a better lock. Build a smarter thief.
+                <h1 className="mt-6 max-w-5xl text-6xl font-semibold leading-[0.92] tracking-[-0.05em] text-white sm:text-7xl lg:text-[7.5rem]">
+                  Fraud defense is only real when the attacker evolves.
                 </h1>
-                <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                  Stage a synthetic fraud heist, route transactions into your
-                  detector, and let Ghost Protocol score every hit, miss, and
-                  blind spot without touching real customer data.
+                <p className="mt-8 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
+                  Run a synthetic heist, route transactions into your detector,
+                  and watch Ghost Protocol score every catch, miss, and blind
+                  spot in a controlled sandbox designed for live adversarial
+                  testing.
                 </p>
-              </div>
 
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Active backend
-                  </p>
-                  <p className="mt-2 break-all text-sm font-medium text-slate-100">
-                    {backendBaseUrl}
-                  </p>
-                </div>
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    LLM mode
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-slate-100">
-                    Mock/stub fallback until `GEMINI_API_KEY` exists
-                  </p>
-                </div>
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                    Sandbox source
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-slate-100">
-                    Native Ghost Protocol match engine
-                  </p>
+                <div className="mt-10 flex flex-wrap gap-3">
+                  <Link href="#configure" className="landing-button">
+                    Begin setup
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href="/scenarios"
+                    className="landing-button landing-button-secondary"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Scenario library
+                  </Link>
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/scenarios"
-                  className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Open Scenario Library
-                </Link>
+              <div className="relative z-10 mt-12 grid gap-4 lg:grid-cols-[0.82fr_0.18fr] lg:items-end">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="app-subpanel p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                      Active backend
+                    </p>
+                    <p className="mt-2 break-all text-sm font-medium text-white">
+                      {backendBaseUrl}
+                    </p>
+                  </div>
+                  <div className="app-subpanel p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                      Runtime path
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-white">
+                      Groq live with automatic mock fallback
+                    </p>
+                  </div>
+                  <div className="app-subpanel p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                      Match engine
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-white">
+                      Native Ghost Protocol sandbox
+                    </p>
+                  </div>
+                </div>
+
+                <div className="landing-scroll-cue flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-slate-500">
+                  <ArrowDown className="h-4 w-4" />
+                  Scroll
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-            {cloneNotice ? (
-              <section
-                className={`rounded-[28px] border p-5 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur ${
-                  cloneNotice.state === "ready"
-                    ? "border-cyan-300/20 bg-cyan-400/10"
-                    : "border-amber-300/20 bg-amber-300/10"
-                }`}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.32em] text-slate-100/80">
-                      {cloneNotice.state === "ready"
-                        ? "Clone Loaded"
-                        : "Clone Unavailable"}
-                    </p>
-                    <h2 className="mt-2 text-2xl font-semibold text-slate-50">
-                      {cloneNotice.state === "ready"
-                        ? `Cloned from ${cloneNotice.scenarioName}`
-                        : "Original scenario data could not be restored"}
-                    </h2>
-                  </div>
-                  <div className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-100">
-                    Source match {cloneNotice.sourceMatchId}
-                  </div>
-                </div>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-200/90">
-                  {cloneNotice.detail}
-                </p>
-              </section>
-            ) : null}
+      <section id="configure" className="landing-section">
+        <div className="landing-grid lg:items-start">
+          <div className="home-reveal-up home-reveal-delay-1 space-y-6 lg:sticky lg:top-10">
+            <div className="landing-frame p-8">
+              <p className="text-xs uppercase tracking-[0.36em] text-slate-500">
+                Section 01
+              </p>
+              <h2 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+                Build the heist before you pull the trigger.
+              </h2>
+              <p className="mt-5 max-w-xl text-base leading-8 text-slate-300">
+                Configure the attack profile, choose the defender path, and
+                keep the entire flow on a single scroll narrative instead of a
+                compressed dashboard block.
+              </p>
+            </div>
 
-            <ScenarioSelector
-              scenarios={SCENARIOS}
-              selectedScenarioId={selectedScenarioId}
-              onSelect={handleScenarioSelect}
-            />
-
-            <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.74)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
+            <section className="app-panel p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                    How It Works
+                  <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                    Sequence
                   </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-50">
-                    Three quick steps to a live heist
-                  </h2>
+                  <h3 className="mt-2 text-2xl font-semibold text-white">
+                    Setup in three moves
+                  </h3>
                 </div>
-                <div className="rounded-full border border-amber-300/20 bg-amber-300/10 p-3 text-amber-100">
+                <div className="landing-pill landing-pill-accent rounded-full p-3">
                   <BrainCircuit className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="mt-6 space-y-3">
                 {HOW_IT_WORKS.map((step) => {
                   const Icon = step.icon;
 
                   return (
                     <article
                       key={step.title}
-                      className="rounded-[24px] border border-white/10 bg-slate-950/35 p-5"
+                      className="app-subpanel flex items-start gap-4 p-4"
                     >
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-cyan-200">
+                      <div className="app-subpanel-strong rounded-2xl p-3 text-slate-100">
                         <Icon className="h-5 w-5" />
                       </div>
-                      <h3 className="mt-4 text-lg font-semibold text-slate-50">
-                        {step.title}
-                      </h3>
-                      <p className="mt-3 text-sm leading-6 text-slate-300">
-                        {step.description}
-                      </p>
+                      <div>
+                        <h4 className="text-base font-semibold text-white">
+                          {step.title}
+                        </h4>
+                        <p className="mt-2 text-sm leading-6 text-slate-300">
+                          {step.description}
+                        </p>
+                      </div>
                     </article>
                   );
                 })}
@@ -498,190 +500,269 @@ function HomeContent() {
             </section>
           </div>
 
-          <div className="space-y-8">
-            <DefenderSetup
-              defenderMode={defenderMode}
-              webhookUrl={webhookUrl}
-              connectionStatus={connectionStatus}
-              onModeChange={handleModeChange}
-              onWebhookUrlChange={handleWebhookUrlChange}
-              onTestConnection={handleTestConnection}
-              isTesting={isTestingConnection}
-            />
+          <div className="space-y-6">
+            {cloneNotice ? (
+              <section className="app-panel home-reveal-up home-reveal-delay-1 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                      {cloneNotice.state === "ready"
+                        ? "Clone Loaded"
+                        : "Clone Unavailable"}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-white">
+                      {cloneNotice.state === "ready"
+                        ? `Cloned from ${cloneNotice.scenarioName}`
+                        : "Original scenario data could not be restored"}
+                    </h2>
+                  </div>
+                  <div className="landing-pill">Source {cloneNotice.sourceMatchId}</div>
+                </div>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300">
+                  {cloneNotice.detail}
+                </p>
+              </section>
+            ) : null}
 
-            <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(145deg,rgba(18,26,47,0.94),rgba(8,13,24,0.92))] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
-              <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
+            <div className="home-reveal-up home-reveal-delay-2">
+              <ScenarioSelector
+                scenarios={SCENARIOS}
+                selectedScenarioId={selectedScenarioId}
+                onSelect={handleScenarioSelect}
+              />
+            </div>
+
+            <div className="home-reveal-up home-reveal-delay-3">
+              <DefenderSetup
+                defenderMode={defenderMode}
+                webhookUrl={webhookUrl}
+                connectionStatus={connectionStatus}
+                onModeChange={handleModeChange}
+                onWebhookUrlChange={handleWebhookUrlChange}
+                onTestConnection={handleTestConnection}
+                isTesting={isTestingConnection}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="launch" className="landing-section">
+        <div className="landing-grid lg:items-start">
+          <div className="home-reveal-up home-reveal-delay-1 space-y-6 lg:sticky lg:top-10">
+            <div className="landing-frame p-8">
+              <p className="text-xs uppercase tracking-[0.36em] text-slate-500">
+                Section 02
+              </p>
+              <h2 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+                Launch once the defender path is clean.
+              </h2>
+              <p className="mt-5 max-w-xl text-base leading-8 text-slate-300">
+                This final section turns configuration into a live match, gives
+                you the owner share link, and keeps the launch state visible in
+                one dedicated stage.
+              </p>
+            </div>
+
+            <section className="app-panel p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                    Current loadout
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold text-white">
+                    Match profile
+                  </h3>
+                </div>
+                <div className="landing-pill landing-pill-accent">
+                  <Radar className="h-3.5 w-3.5" />
+                  {canLaunch ? "Ready to arm" : "Waiting on defender"}
+                </div>
+              </div>
+
+              <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="app-subpanel p-4">
+                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                    Scenario
+                  </dt>
+                  <dd className="mt-2 text-base font-medium text-white">
+                    {selectedScenario.name}
+                  </dd>
+                </div>
+                <div className="app-subpanel p-4">
+                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                    Defender mode
+                  </dt>
+                  <dd className="mt-2 text-base font-medium text-white">
+                    {defenderMode === "police_ai" ? "Police AI" : "Webhook API"}
+                  </dd>
+                </div>
+                <div className="app-subpanel p-4">
+                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                    Criminal persona
+                  </dt>
+                  <dd className="mt-2 text-base font-medium capitalize text-white">
+                    {selectedScenario.criminalPersona}
+                  </dd>
+                </div>
+                <div className="app-subpanel p-4">
+                  <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                    Attack rounds
+                  </dt>
+                  <dd className="mt-2 text-base font-medium text-white">
+                    {selectedScenario.totalRounds}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/scenarios" className="landing-button landing-button-secondary">
+                  <ExternalLink className="h-4 w-4" />
+                  Review scenario library
+                </Link>
+              </div>
+            </section>
+          </div>
+
+          <div className="space-y-6">
+            <section className="app-panel home-reveal-up home-reveal-delay-2 p-6">
+              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                 Launch Control
               </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-50">
+              <h2 className="mt-2 text-2xl font-semibold text-white">
                 Arm the sandbox
               </h2>
 
-              <div className="mt-5 rounded-[24px] border border-white/10 bg-slate-950/45 p-5">
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                      Scenario
-                    </dt>
-                    <dd className="mt-2 text-base font-medium text-slate-50">
-                      {selectedScenario.name}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                      Defender mode
-                    </dt>
-                    <dd className="mt-2 text-base font-medium text-slate-50">
-                      {defenderMode === "police_ai" ? "Police AI" : "Webhook API"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                      Criminal persona
-                    </dt>
-                    <dd className="mt-2 text-base font-medium capitalize text-slate-50">
-                      {selectedScenario.criminalPersona}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
-                      Match rounds
-                    </dt>
-                    <dd className="mt-2 text-base font-medium text-slate-50">
-                      {selectedScenario.totalRounds}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
+                Launch stays locked until Ghost Protocol has a configured
+                defender path. Police AI is immediately ready. Custom webhook
+                mode requires a successful connectivity test first.
+              </p>
 
               <button
                 type="button"
                 onClick={handleLaunchMatch}
                 disabled={!canLaunch || isLaunching}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full border border-cyan-300/30 bg-[linear-gradient(90deg,rgba(0,212,255,0.24),rgba(255,59,59,0.22))] px-6 py-4 text-sm font-semibold uppercase tracking-[0.24em] text-slate-50 transition hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-slate-500"
+                className="landing-button mt-8 w-full px-6 py-4 text-sm font-semibold uppercase tracking-[0.24em] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/5 disabled:text-slate-500"
               >
                 <span>{isLaunching ? "Launching Match..." : "Launch Match"}</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
 
-              <p className="mt-4 text-sm leading-6 text-slate-400">
-                Launch stays locked until Ghost Protocol has a configured
-                defender path. Police AI is instantly ready. Custom webhook mode
-                requires a successful connectivity test first.
-              </p>
-
               {launchError ? (
-                <div className="mt-5 rounded-[24px] border border-rose-400/20 bg-rose-400/10 p-4 text-sm leading-6 text-rose-100">
+                <div className="app-subpanel mt-5 border-[rgba(219,138,138,0.24)] bg-[rgba(219,138,138,0.11)] p-4 text-sm leading-6 text-rose-100">
                   {launchError}
                 </div>
               ) : null}
+            </section>
 
-              {launchSummary ? (
-                <div className="mt-5 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 p-5">
+            {launchSummary ? (
+              <div className="app-panel home-reveal-up home-reveal-delay-3 p-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 p-2 text-emerald-100">
+                    <div className="landing-pill landing-pill-accent rounded-full p-2">
                       <ShieldCheck className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-sm uppercase tracking-[0.22em] text-emerald-200/80">
+                      <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                         Match Live
                       </p>
-                      <p className="text-lg font-semibold text-emerald-50">
+                      <p className="text-xl font-semibold text-white">
                         Sandbox launched successfully
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50">
+                  <div className="landing-pill">
                     <Share2 className="h-3.5 w-3.5" />
-                    This browser is the owner view
+                    Owner view
                   </div>
-
-                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">
-                        Match ID
-                      </dt>
-                      <dd className="mt-2 break-all font-mono text-sm text-emerald-50">
-                        {launchSummary.matchId}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">
-                        Status
-                      </dt>
-                      <dd className="mt-2 text-sm font-medium capitalize text-emerald-50">
-                        {launchSummary.status}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">
-                        Defender ID
-                      </dt>
-                      <dd className="mt-2 break-all font-mono text-sm text-emerald-50">
-                        {launchSummary.defenderId}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">
-                        Share URL
-                      </dt>
-                      <dd className="mt-2 break-all font-mono text-sm text-emerald-50">
-                        {launchSummary.absoluteShareUrl}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={handleCopyShareLink}
-                      className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-4 py-2 text-sm font-medium text-emerald-50 transition hover:bg-emerald-300/15"
-                    >
-                      <Copy className="h-4 w-4" />
-                      {shareCopyState === "copied"
-                        ? "Share link copied"
-                        : shareCopyState === "failed"
-                          ? "Copy failed"
-                          : "Copy share link"}
-                    </button>
-
-                    <Link
-                      href={launchSummary.shareUrl}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50 transition hover:bg-white/15"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Open War Room
-                    </Link>
-
-                    <Link
-                      href="/scenarios"
-                      className="inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-300/10 px-4 py-2 text-sm font-medium text-emerald-50 transition hover:bg-emerald-300/15"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Scenario Library
-                    </Link>
-                  </div>
-
-                  <p className="mt-4 text-sm leading-6 text-emerald-50/80">
-                    Anyone opening this share link from a different browser or
-                    device gets a read-only match view.
-                  </p>
                 </div>
-              ) : null}
-            </section>
+
+                <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <div className="app-subpanel p-4">
+                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                      Match ID
+                    </dt>
+                    <dd className="mt-2 break-all font-mono text-sm text-white">
+                      {launchSummary.matchId}
+                    </dd>
+                  </div>
+                  <div className="app-subpanel p-4">
+                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                      Status
+                    </dt>
+                    <dd className="mt-2 text-sm font-medium capitalize text-white">
+                      {launchSummary.status}
+                    </dd>
+                  </div>
+                  <div className="app-subpanel p-4">
+                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                      Defender ID
+                    </dt>
+                    <dd className="mt-2 break-all font-mono text-sm text-white">
+                      {launchSummary.defenderId}
+                    </dd>
+                  </div>
+                  <div className="app-subpanel p-4">
+                    <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                      Share URL
+                    </dt>
+                    <dd className="mt-2 break-all font-mono text-sm text-white">
+                      {launchSummary.absoluteShareUrl}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCopyShareLink}
+                    className="landing-button"
+                  >
+                    <Copy className="h-4 w-4" />
+                    {shareCopyState === "copied"
+                      ? "Share link copied"
+                      : shareCopyState === "failed"
+                        ? "Copy failed"
+                        : "Copy share link"}
+                  </button>
+
+                  <Link
+                    href={launchSummary.shareUrl}
+                    className="landing-button landing-button-secondary"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open War Room
+                  </Link>
+
+                  <Link
+                    href="/scenarios"
+                    className="landing-button landing-button-secondary"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Scenario Library
+                  </Link>
+                </div>
+
+                <p className="mt-5 text-sm leading-6 text-slate-300">
+                  Anyone opening this share link from a different browser or
+                  device gets a read-only match view.
+                </p>
+              </div>
+            ) : null}
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }
 
 function HomePageFallback() {
   return (
-    <main className="px-6 py-8 sm:px-8 lg:px-12">
+    <main className="app-page">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-[32px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-8 text-slate-200 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+        <div className="app-panel p-8 text-slate-200">
           Loading setup...
         </div>
       </div>

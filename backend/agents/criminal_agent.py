@@ -2,13 +2,14 @@
 Ghost Protocol — Criminal Agent
 
 Encapsulates the Red Team attacker logic. In mock mode it generates realistic,
-persona-aware fraudulent transactions from local seed data. When a Gemini API
+persona-aware fraudulent transactions from local seed data. When a Groq API
 key is present, the same interface switches to LLM-backed generation and
 adaptation automatically.
 """
 from __future__ import annotations
 
 import json
+import logging
 import random
 import re
 import uuid
@@ -25,13 +26,14 @@ from backend.agents.criminal_prompts import (
     PERSONA_PROMPTS,
     TRANSACTION_SCHEMA,
 )
-from backend.config import GEMINI_FLASH_MODEL, USE_MOCK_LLM
+from backend.config import GROQ_API_KEY, USE_MOCK_LLM
 from backend.data.generator import load_personas
 from backend.data.models import Persona, Transaction, TransactionType
-from backend.gemini_client import GEMINI_CLIENT, summarize_exception
 
 PERSONAS_BY_ID = {persona.id: persona for persona in load_personas()}
 SEED_TRANSACTIONS_PATH = Path(__file__).resolve().parent.parent / "data" / "transactions.json"
+GROQ_ATTACK_MODEL = "llama-3.3-70b-versatile"
+logger = logging.getLogger(__name__)
 
 LUXURY_ATTACK_VECTORS = [
     ("Apple Store Online", "online shopping", TransactionType.PURCHASE),
@@ -121,6 +123,7 @@ class CriminalAgent:
         self.system_prompt = PERSONA_PROMPTS[persona]
         self.last_strategy_notes: str = ""
         self.last_adaptation_reasoning: str = ""
+        self.last_runtime_mode: str = "mock" if USE_MOCK_LLM else "groq"
         self._seed_transactions_cache: list[Transaction] | None = None
 
     async def generate_attacks(
@@ -141,14 +144,25 @@ class CriminalAgent:
         try:
             if USE_MOCK_LLM:
                 attacks = self._generate_mock_attacks(persona, rules, count)
+                self.last_runtime_mode = "mock"
             else:
                 attacks = await self._generate_llm_attacks(persona, known_defender_rules, count)
+                self.last_runtime_mode = "groq"
         except Exception as exc:
             attacks = self._generate_mock_attacks(persona, rules, count)
-            self.last_strategy_notes = (
-                f"Gemini generation failed: {summarize_exception(exc)}; "
-                f"fell back to local {self.persona} mock attacks."
-            )
+            if self._is_rate_limited_error(exc):
+                logger.warning(
+                    "Groq criminal generation hit a rate limit; falling back to local mock attacks."
+                )
+                self.last_strategy_notes = (
+                    f"Groq rate limit reached; continuing with local {self.persona} mock attacks."
+                )
+            else:
+                self.last_strategy_notes = (
+                    f"Groq generation failed: {self._summarize_exception(exc)}; "
+                    f"fell back to local {self.persona} mock attacks."
+                )
+            self.last_runtime_mode = "mock"
 
         return attacks
 
@@ -179,6 +193,7 @@ class CriminalAgent:
                     rules,
                     inferred_pattern,
                 )
+                self.last_runtime_mode = "mock"
             else:
                 attacks = await self._generate_llm_adapted_attacks(
                     target_persona,
@@ -187,6 +202,7 @@ class CriminalAgent:
                     rules,
                     inferred_pattern,
                 )
+                self.last_runtime_mode = "groq"
         except Exception as exc:
             attacks = self._generate_mock_adapted_attacks(
                 target_persona,
@@ -195,10 +211,19 @@ class CriminalAgent:
                 rules,
                 inferred_pattern,
             )
-            self.last_adaptation_reasoning = (
-                f"Gemini adaptation failed: {summarize_exception(exc)}; "
-                f"fell back to local {self.persona} adaptation logic."
-            )
+            if self._is_rate_limited_error(exc):
+                logger.warning(
+                    "Groq criminal adaptation hit a rate limit; falling back to local mock logic."
+                )
+                self.last_adaptation_reasoning = (
+                    f"Groq rate limit reached; continuing with local {self.persona} adaptation logic."
+                )
+            else:
+                self.last_adaptation_reasoning = (
+                    f"Groq adaptation failed: {self._summarize_exception(exc)}; "
+                    f"fell back to local {self.persona} adaptation logic."
+                )
+            self.last_runtime_mode = "mock"
 
         return attacks
 
@@ -584,10 +609,10 @@ class CriminalAgent:
             count=count,
             transaction_schema=TRANSACTION_SCHEMA,
         )
-        payload = await self._run_gemini_prompt(self.system_prompt, prompt)
+        payload = await self._run_groq_prompt(self.system_prompt, prompt)
         attacks = self._transactions_from_payload(payload, persona, count, default_fraud_type=self._default_fraud_type())
         self.last_strategy_notes = (
-            f"{self.persona.title()} attacker generated {len(attacks)} Gemini-backed attacks for {persona.name}."
+            f"{self.persona.title()} attacker generated {len(attacks)} Groq-backed attacks for {persona.name}."
         )
         return attacks
 
@@ -612,23 +637,38 @@ class CriminalAgent:
             inferred_pattern=inferred_pattern,
             count=len(previous_attacks),
         )
-        payload = await self._run_gemini_prompt(self.system_prompt, prompt)
+        payload = await self._run_groq_prompt(self.system_prompt, prompt)
         attacks = self._transactions_from_payload(payload, persona, len(previous_attacks), default_fraud_type=self._default_fraud_type())
         self.last_adaptation_reasoning = (
-            f"Defender appeared sensitive to {inferred_pattern}; Gemini generated a new evasive wave "
+            f"Defender appeared sensitive to {inferred_pattern}; Groq generated a new evasive wave "
             f"with {len(attacks)} transactions."
         )
         return attacks
 
-    async def _run_gemini_prompt(self, system_prompt: str, prompt: str) -> Any:
-        return await GEMINI_CLIENT.generate_json(
-            model=GEMINI_FLASH_MODEL,
-            system_prompt=system_prompt,
-            prompt=prompt,
-            response_schema=ATTACK_RESPONSE_SCHEMA,
-            temperature=0.7,
-            max_output_tokens=4096,
-        )
+    async def _run_groq_prompt(self, system_prompt: str, prompt: str) -> Any:
+        from groq import AsyncGroq
+
+        client = AsyncGroq(api_key=GROQ_API_KEY)
+        try:
+            response = await client.chat.completions.create(
+                model=GROQ_ATTACK_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.7,
+            )
+        except Exception as exc:
+            if self._is_rate_limited_error(exc):
+                logger.warning(
+                    "Groq criminal prompt rate-limited; using local mock fallback."
+                )
+                raise RuntimeError("Groq criminal prompt hit a 429 rate limit.") from exc
+            raise
+
+        raw_text = (response.choices[0].message.content or "").strip()
+        cleaned = self._strip_markdown_fences(raw_text)
+        return json.loads(cleaned)
 
     def _transactions_from_payload(
         self,
@@ -640,7 +680,7 @@ class CriminalAgent:
         if isinstance(payload, dict):
             payload = payload.get("attacks") or payload.get("transactions") or []
         if not isinstance(payload, list):
-            raise ValueError("Gemini response did not contain a JSON array of transactions.")
+            raise ValueError("Groq response did not contain a JSON array of transactions.")
 
         transactions: list[Transaction] = []
         for item in payload[:count]:
@@ -770,6 +810,14 @@ class CriminalAgent:
                 lines = lines[:-1]
             text = "\n".join(lines).strip()
         return text
+
+    def _is_rate_limited_error(self, exc: Exception) -> bool:
+        error_str = str(exc).lower()
+        return any(token in error_str for token in ("429", "rate", "quota", "limit"))
+
+    def _summarize_exception(self, exc: Exception) -> str:
+        text = str(exc).strip()
+        return text or exc.__class__.__name__
 
     def _is_night(self, timestamp: str) -> bool:
         hour = datetime.fromisoformat(timestamp).hour

@@ -302,9 +302,9 @@ export default function MatchPage({ params }: MatchPageProps) {
 
   if (isLoading) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-7xl">
-          <div className="rounded-[32px] border border-white/10 bg-[rgba(15,22,41,0.82)] p-8 text-slate-200 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="app-panel p-8 text-slate-200">
             Loading match {matchId}...
           </div>
         </div>
@@ -314,9 +314,9 @@ export default function MatchPage({ params }: MatchPageProps) {
 
   if (errorMessage || !match) {
     return (
-      <main className="px-6 py-8 sm:px-8 lg:px-12">
+      <main className="app-page">
         <div className="mx-auto max-w-4xl">
-          <div className="rounded-[32px] border border-rose-300/20 bg-rose-400/10 p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+          <div className="app-panel border-[rgba(219,138,138,0.24)] bg-[rgba(219,138,138,0.11)] p-8">
             <div className="flex items-center gap-3 text-rose-100">
               <ShieldAlert className="h-6 w-6" />
               <h1 className="text-2xl font-semibold">Match unavailable</h1>
@@ -326,7 +326,7 @@ export default function MatchPage({ params }: MatchPageProps) {
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex items-center gap-2 rounded-full border border-rose-200/20 bg-white/10 px-5 py-2.5 text-sm font-medium text-rose-50 transition hover:bg-white/15"
+              className="app-button app-button-danger mt-6"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to setup
@@ -344,9 +344,9 @@ export default function MatchPage({ params }: MatchPageProps) {
   const isOwnerView = viewMode === "owner";
 
   return (
-    <main className="px-6 py-8 sm:px-8 lg:px-12">
+    <main className="app-page">
       <div className="mx-auto max-w-7xl space-y-8">
-        <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,22,41,0.95),rgba(10,14,26,0.9))] p-8 shadow-[0_24px_80px_rgba(3,8,18,0.45)]">
+        <section className="app-hero p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <Link
@@ -360,7 +360,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                 {match.status === "complete" || match.report_id ? (
                   <Link
                     href={`/report/${matchId}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/15"
+                    className="app-button app-button-success"
                   >
                     <FileText className="h-4 w-4" />
                     View post-game report
@@ -368,7 +368,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                 ) : null}
                 <Link
                   href={`/replay/${matchId}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-300/15"
+                  className="app-button app-button-secondary"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Open Heist Replay
@@ -377,7 +377,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                   <button
                     type="button"
                     onClick={handleCopyShareLink}
-                    className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/15"
+                    className="app-button"
                   >
                     <Copy className="h-4 w-4" />
                     {shareCopyState === "copied"
@@ -388,9 +388,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                   </button>
                 ) : null}
               </div>
-              <p className="mt-5 text-xs uppercase tracking-[0.32em] text-cyan-300/80">
-                War Room
-              </p>
+              <p className="app-kicker mt-5">War Room</p>
               <h1 className="mt-2 text-4xl font-semibold text-slate-50">
                 {match.scenario_name}
               </h1>
@@ -401,10 +399,10 @@ export default function MatchPage({ params }: MatchPageProps) {
                 from the same websocket event stream.
               </p>
               <div
-                className={`mt-5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${
+                className={`mt-5 ${
                   isOwnerView
-                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-                    : "border-amber-300/20 bg-amber-300/10 text-amber-100"
+                    ? "app-chip app-chip-success"
+                    : "app-chip app-chip-warning"
                 }`}
               >
                 {isOwnerView ? (
@@ -422,7 +420,7 @@ export default function MatchPage({ params }: MatchPageProps) {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   Match Status
                 </p>
@@ -430,7 +428,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                   {match.status}
                 </p>
               </div>
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   WebSocket
                 </p>
@@ -438,7 +436,7 @@ export default function MatchPage({ params }: MatchPageProps) {
                   {connectionState}
                 </p>
               </div>
-              <div className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
+              <div className="app-subpanel px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
                   View Mode
                 </p>

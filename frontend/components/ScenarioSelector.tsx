@@ -31,17 +31,17 @@ export function ScenarioSelector({
   const PersonaIcon = personaIcons[selectedScenario.criminalPersona];
 
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[rgba(15,22,41,0.8)] p-6 shadow-[0_24px_80px_rgba(3,8,18,0.45)] backdrop-blur">
+    <section className="app-panel p-6">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-cyan-300/80">
+          <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
             Scenario Selection
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-50">
             Choose the heist profile
           </h2>
         </div>
-        <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 p-3 text-cyan-200">
+        <div className="landing-pill landing-pill-accent rounded-full p-3">
           <Radar className="h-5 w-5" />
         </div>
       </div>
@@ -51,7 +51,7 @@ export function ScenarioSelector({
           Scenario
         </span>
         <select
-          className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-base text-slate-100 outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/20"
+          className="app-input text-base"
           value={selectedScenarioId}
           onChange={(event) => onSelect(event.target.value)}
         >
@@ -63,10 +63,10 @@ export function ScenarioSelector({
         </select>
       </label>
 
-      <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,rgba(11,18,34,0.95),rgba(8,13,24,0.86))]">
+      <div className="app-subpanel mt-5 overflow-hidden">
         <div className="border-b border-white/10 px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-cyan-200">
+            <div className="app-subpanel-strong rounded-2xl p-3 text-slate-200">
               <PersonaIcon className="h-5 w-5" />
             </div>
             <div>
@@ -84,7 +84,7 @@ export function ScenarioSelector({
         </div>
 
         <dl className="grid gap-4 px-5 py-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+          <div className="app-subpanel p-4">
             <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-slate-400">
               <Clock3 className="h-4 w-4" />
               Runtime
@@ -93,7 +93,7 @@ export function ScenarioSelector({
               {selectedScenario.durationLabel}
             </dd>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+          <div className="app-subpanel p-4">
             <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Volume
             </dt>
@@ -101,7 +101,7 @@ export function ScenarioSelector({
               {selectedScenario.transactionVolumeLabel}
             </dd>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+          <div className="app-subpanel p-4">
             <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Attack Rounds
             </dt>

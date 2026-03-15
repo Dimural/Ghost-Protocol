@@ -22,6 +22,7 @@ from backend.routes.websocket import MATCH_EVENT_MANAGER, build_match_event_emit
 def isolate_state_and_websocket_manager(tmp_path, monkeypatch):
     monkeypatch.setattr(MATCH_STATE_STORE, "_fallback_path", tmp_path / "matches.json")
     monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", None)
+    monkeypatch.setattr("backend.agents.criminal_agent.USE_MOCK_LLM", True)
     MATCH_STATE_STORE.delete("match-ws")
     MATCH_STATE_STORE.delete("match-adapt-ws")
     MATCH_EVENT_MANAGER.clear()
@@ -121,5 +122,7 @@ def test_websocket_receives_attacker_adapting_event_and_cleans_up_disconnect():
         assert message["total_rounds"] == 3
         assert "ATTACKER IS ADAPTING" in message["title"]
         assert message["banner_message"]
+        assert message["verified"] is True
+        assert "Verified adaptation" in message["evidence_summary"]
 
     assert MATCH_EVENT_MANAGER.connection_count("match-adapt-ws") == 0

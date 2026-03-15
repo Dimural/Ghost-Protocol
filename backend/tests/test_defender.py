@@ -27,6 +27,7 @@ def isolate_defender_store(tmp_path, monkeypatch):
     monkeypatch.setattr(_ERROR_STORE, "_redis_client", None)
     monkeypatch.setattr(MATCH_STATE_STORE, "_fallback_path", tmp_path / "matches.json")
     monkeypatch.setattr(MATCH_STATE_STORE, "_redis_client", None)
+    monkeypatch.setattr("backend.agents.police_agent.USE_MOCK_LLM", True)
     clear_defender_errors("match-123")
     clear_defender_errors("match-124")
     clear_defender_errors("match-125")
@@ -397,6 +398,46 @@ def test_defender_error_log_endpoint_returns_logged_events(sample_transaction, m
     assert payload["errors"][0]["war_room_visible"] is True
 
 
+def test_sample_webhook_endpoint_returns_defender_contract():
+    client = TestClient(app)
+    response = client.post(
+        "/api/defender/sample-webhook",
+        json={
+            "transaction_id": "sample-1",
+            "amount": 1800.0,
+            "merchant": "TD Bank Wire Transfer",
+            "category": "transfer",
+            "location_city": "Lagos",
+            "location_country": "Nigeria",
+            "transaction_type": "transfer",
+            "user_spending_history_summary": (
+                "Last transactions: Tim Hortons $6.40 in Toronto, Metro $52.10 in Toronto, "
+                "Spotify $11.99 in Toronto"
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["transaction_id"] == "sample-1"
+    assert payload["decision"] == "DENY"
+    assert payload["confidence"] >= 0.5
+
+
+@pytest.mark.asyncio
+async def test_dispatch_can_use_sample_webhook_endpoint(sample_transaction):
+    dispatcher = WebhookDispatcher(transport=httpx.ASGITransport(app=app))
+
+    decision = await dispatcher.dispatch(
+        transaction=sample_transaction,
+        defender_url="http://testserver/api/defender/sample-webhook",
+    )
+
+    assert decision.transaction_id == sample_transaction.id
+    assert decision.decision in {"APPROVE", "DENY"}
+    assert decision.reason is not None
+
+
 @pytest.mark.asyncio
 async def test_dispatch_batch_collects_all_decisions(sample_transaction):
     webhook_app = FastAPI()
@@ -479,6 +520,70 @@ async def test_police_ai_catches_obvious_fraud():
 
 
 @pytest.mark.asyncio
+async def test_police_ai_handles_mixed_timestamp_formats():
+    agent = PoliceAgent()
+    recent_history = [
+        Transaction(
+            id="hist-mixed-1",
+            timestamp="2026-03-15T17:00:00+00:00",
+            user_id="ghost_retiree",
+            amount=24.0,
+            currency="CAD",
+            merchant="Metro",
+            category="groceries",
+            location_city="Toronto",
+            location_country="Canada",
+            transaction_type=TransactionType.PURCHASE,
+            is_fraud=False,
+        ),
+        Transaction(
+            id="hist-mixed-2",
+            timestamp="2026-03-15T17:12:00",
+            user_id="ghost_retiree",
+            amount=26.0,
+            currency="CAD",
+            merchant="Metro",
+            category="groceries",
+            location_city="Toronto",
+            location_country="Canada",
+            transaction_type=TransactionType.PURCHASE,
+            is_fraud=False,
+        ),
+        Transaction(
+            id="hist-mixed-3",
+            timestamp="2026-03-15T17:24:00+00:00",
+            user_id="ghost_retiree",
+            amount=22.0,
+            currency="CAD",
+            merchant="Metro",
+            category="groceries",
+            location_city="Toronto",
+            location_country="Canada",
+            transaction_type=TransactionType.PURCHASE,
+            is_fraud=False,
+        ),
+    ]
+    current_transaction = Transaction(
+        id="mixed-current",
+        timestamp="2026-03-15T17:30:00",
+        user_id="ghost_retiree",
+        amount=28.0,
+        currency="CAD",
+        merchant="Metro",
+        category="groceries",
+        location_city="Toronto",
+        location_country="Canada",
+        transaction_type=TransactionType.PURCHASE,
+        is_fraud=False,
+    )
+
+    decision = await agent.evaluate_transaction(current_transaction, recent_history)
+
+    assert decision.transaction_id == "mixed-current"
+    assert decision.decision in {"APPROVE", "DENY"}
+
+
+@pytest.mark.asyncio
 async def test_police_ai_approves_normal_transaction():
     agent = PoliceAgent()
     recent_history = [
@@ -529,6 +634,82 @@ async def test_police_ai_approves_normal_transaction():
     assert decision.confidence >= 0.51
     assert decision.reason is not None
     assert decision.reason.startswith("Approved because")
+
+
+@pytest.mark.asyncio
+async def test_police_ai_batch_preserves_transaction_order():
+    agent = PoliceAgent()
+    transactions = [
+        Transaction(
+            id="batch-1",
+            timestamp=datetime(2026, 3, 14, 18, 0, 0).isoformat(),
+            user_id="ghost_student",
+            amount=21.40,
+            currency="CAD",
+            merchant="Uber Eats",
+            category="food delivery",
+            location_city="Toronto",
+            location_country="Canada",
+            transaction_type=TransactionType.PURCHASE,
+            is_fraud=False,
+        ),
+        Transaction(
+            id="batch-2",
+            timestamp=datetime(2026, 3, 15, 3, 30, 0).isoformat(),
+            user_id="ghost_student",
+            amount=812.33,
+            currency="CAD",
+            merchant="Wise Transfer",
+            category="transfer",
+            location_city="Bucharest",
+            location_country="Romania",
+            transaction_type=TransactionType.TRANSFER,
+            is_fraud=True,
+            fraud_type="identity_theft",
+        ),
+    ]
+
+    decisions = await agent.evaluate_batch(
+        transactions,
+        recent_history_by_id={transaction.id: [] for transaction in transactions},
+    )
+
+    assert [decision.transaction_id for decision in decisions] == ["batch-1", "batch-2"]
+    assert decisions[0].decision == "APPROVE"
+    assert decisions[1].decision == "DENY"
+    assert agent.last_runtime_mode == "mock"
+
+
+@pytest.mark.asyncio
+async def test_police_ai_batch_rate_limit_falls_back_to_rules(monkeypatch):
+    monkeypatch.setattr("backend.agents.police_agent.USE_MOCK_LLM", False)
+
+    async def rate_limited(*args, **kwargs):
+        raise RuntimeError("429 rate limit exceeded by Groq")
+
+    monkeypatch.setattr(PoliceAgent, "_evaluate_with_groq_batch", rate_limited)
+    agent = PoliceAgent()
+    transaction = Transaction(
+        id="batch-rate-limit",
+        timestamp=datetime(2026, 3, 15, 3, 30, 0).isoformat(),
+        user_id="ghost_student",
+        amount=812.33,
+        currency="CAD",
+        merchant="Wise Transfer",
+        category="transfer",
+        location_city="Bucharest",
+        location_country="Romania",
+        transaction_type=TransactionType.TRANSFER,
+        is_fraud=True,
+        fraud_type="identity_theft",
+    )
+
+    decisions = await agent.evaluate_batch([transaction], recent_history_by_id={transaction.id: []})
+
+    assert decisions[0].transaction_id == "batch-rate-limit"
+    assert decisions[0].decision == "DENY"
+    assert "Groq rate limits were reached" in (decisions[0].reason or "")
+    assert agent.last_runtime_mode == "mock"
 
 
 @pytest.mark.asyncio
