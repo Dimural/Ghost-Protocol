@@ -123,7 +123,7 @@ export function DefenderSetup({
               Police AI is built in and ready for immediate use.
             </p>
             <p className="text-sm leading-6 text-slate-400">
-              It is the fastest way to launch a clean live demo.
+              It keeps the launch flow simple and direct.
             </p>
           </div>
         )}

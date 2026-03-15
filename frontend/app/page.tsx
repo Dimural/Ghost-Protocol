@@ -412,18 +412,18 @@ function HomeContent() {
                   </div>
                   <div className="app-subpanel p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-                      Decisioning
+                      AI Agent
                     </p>
                     <p className="mt-2 text-sm font-medium text-white">
-                      Live adaptive analysis
+                      Criminal agent adversary
                     </p>
                   </div>
                   <div className="app-subpanel p-4">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-                      Coverage
+                      Sandbox
                     </p>
                     <p className="mt-2 text-sm font-medium text-white">
-                      End-to-end attack simulation
+                      Synthetic banking sandbox
                     </p>
                   </div>
                 </div>
