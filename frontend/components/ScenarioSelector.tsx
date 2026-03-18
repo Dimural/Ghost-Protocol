@@ -64,7 +64,7 @@ export function ScenarioSelector({
       </label>
 
       <div className="app-subpanel mt-5 overflow-hidden">
-        <div className="border-b border-white/10 px-5 py-4">
+        <div className="border-b border-white/10 px-5 py-5">
           <div className="flex items-center gap-3">
             <div className="app-subpanel-strong rounded-2xl p-3 text-slate-200">
               <PersonaIcon className="h-5 w-5" />
@@ -81,10 +81,22 @@ export function ScenarioSelector({
           <p className="mt-4 text-sm leading-6 text-slate-300">
             {selectedScenario.description}
           </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <div className="landing-pill landing-pill-accent">
+              Live persona
+            </div>
+            <div className="landing-pill">
+              {selectedScenario.criminalPersona}
+            </div>
+            <div className="landing-pill">
+              {selectedScenario.transactionVolumeLabel}
+            </div>
+          </div>
         </div>
 
         <dl className="grid gap-4 px-5 py-4 sm:grid-cols-3">
-          <div className="app-subpanel p-4">
+          <div className="landing-metric-card">
             <dt className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-slate-400">
               <Clock3 className="h-4 w-4" />
               Runtime
@@ -93,7 +105,7 @@ export function ScenarioSelector({
               {selectedScenario.durationLabel}
             </dd>
           </div>
-          <div className="app-subpanel p-4">
+          <div className="landing-metric-card">
             <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Volume
             </dt>
@@ -101,7 +113,7 @@ export function ScenarioSelector({
               {selectedScenario.transactionVolumeLabel}
             </dd>
           </div>
-          <div className="app-subpanel p-4">
+          <div className="landing-metric-card">
             <dt className="text-xs uppercase tracking-[0.22em] text-slate-400">
               Attack Rounds
             </dt>

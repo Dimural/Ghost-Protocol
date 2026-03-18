@@ -55,34 +55,46 @@ export function DefenderSetup({
         <button
           type="button"
           onClick={() => onModeChange("police_ai")}
-          className={`rounded-[24px] border p-4 text-left transition ${
+          className={`rounded-[24px] border p-5 text-left transition ${
             defenderMode === "police_ai"
-              ? "border-[rgba(214,255,87,0.26)] bg-[rgba(214,255,87,0.08)]"
-              : "border-white/10 bg-[rgba(255,255,255,0.03)] hover:border-white/20"
+              ? "selection-card-active"
+              : "selection-card-idle hover:border-white/20"
           }`}
         >
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+            Built-in
+          </p>
           <p className="text-base font-semibold text-slate-50">Use Police AI</p>
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Launch instantly with Ghost Protocol&apos;s built-in fallback
             defender. No setup needed.
+          </p>
+          <p className="mt-4 text-xs uppercase tracking-[0.24em] text-[rgba(214,255,87,0.8)]">
+            Fastest path to launch
           </p>
         </button>
 
         <button
           type="button"
           onClick={() => onModeChange("webhook")}
-          className={`rounded-[24px] border p-4 text-left transition ${
+          className={`rounded-[24px] border p-5 text-left transition ${
             defenderMode === "webhook"
-              ? "border-[rgba(214,255,87,0.26)] bg-[rgba(214,255,87,0.08)]"
-              : "border-white/10 bg-[rgba(255,255,255,0.03)] hover:border-white/20"
+              ? "selection-card-active"
+              : "selection-card-idle hover:border-white/20"
           }`}
         >
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+            External
+          </p>
           <p className="text-base font-semibold text-slate-50">
             Use my own API
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Send transaction payloads to your fraud endpoint and collect
             decisions in real time.
+          </p>
+          <p className="mt-4 text-xs uppercase tracking-[0.24em] text-slate-400">
+            Contract validated before launch
           </p>
         </button>
       </div>

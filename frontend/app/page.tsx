@@ -401,8 +401,8 @@ function HomeContent() {
               </div>
 
               <div className="relative z-10 mt-12 grid gap-4 lg:grid-cols-[0.82fr_0.18fr] lg:items-end">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="app-subpanel p-4">
+                <div className="landing-status-rail">
+                  <div className="landing-status-cell">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
                       Environment
                     </p>
@@ -410,7 +410,7 @@ function HomeContent() {
                       Private Simulation Grid
                     </p>
                   </div>
-                  <div className="app-subpanel p-4">
+                  <div className="landing-status-cell">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
                       AI Agent
                     </p>
@@ -418,7 +418,7 @@ function HomeContent() {
                       Criminal agent adversary
                     </p>
                   </div>
-                  <div className="app-subpanel p-4">
+                  <div className="landing-status-cell">
                     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
                       Sandbox
                     </p>
@@ -574,7 +574,7 @@ function HomeContent() {
               </div>
 
               <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="app-subpanel p-4">
+                <div className="landing-metric-card">
                   <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
                     Scenario
                   </dt>
@@ -582,7 +582,7 @@ function HomeContent() {
                     {selectedScenario.name}
                   </dd>
                 </div>
-                <div className="app-subpanel p-4">
+                <div className="landing-metric-card">
                   <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
                     Defender mode
                   </dt>
@@ -590,7 +590,7 @@ function HomeContent() {
                       {defenderMode === "police_ai" ? "Police AI" : "Custom API"}
                   </dd>
                 </div>
-                <div className="app-subpanel p-4">
+                <div className="landing-metric-card">
                   <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
                     Criminal persona
                   </dt>
@@ -598,7 +598,7 @@ function HomeContent() {
                     {selectedScenario.criminalPersona}
                   </dd>
                 </div>
-                <div className="app-subpanel p-4">
+                <div className="landing-metric-card">
                   <dt className="text-xs uppercase tracking-[0.22em] text-slate-500">
                     Attack rounds
                   </dt>
