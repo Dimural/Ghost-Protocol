@@ -8,6 +8,7 @@ automatically switches to Groq and falls back to heuristics on any error.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections import defaultdict
@@ -17,6 +18,10 @@ from pathlib import Path
 from statistics import median
 from time import perf_counter
 from typing import Any, Iterable
+
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
 
 from backend.config import GROQ_API_KEY, USE_MOCK_LLM
 from backend.data.models import DefenderDecision, Transaction, TransactionType
@@ -265,20 +270,23 @@ class PoliceAgent:
         transactions: list[Transaction],
         recent_history_by_id: dict[str, list[Transaction]],
     ) -> list[DefenderDecision]:
-        from groq import AsyncGroq
-
-        client = AsyncGroq(api_key=GROQ_API_KEY)
-        prompt = self._build_batch_prompt(transactions, recent_history_by_id)
+        chain = self._build_groq_chain()
+        payloads = [
+            {
+                "transaction_details": json.dumps(
+                    self._build_prompt_transaction_context(
+                        index=index,
+                        transaction=transaction,
+                        recent_transactions=recent_history_by_id.get(transaction.id, []),
+                    ),
+                    indent=2,
+                )
+            }
+            for index, transaction in enumerate(transactions, start=1)
+        ]
 
         try:
-            response = await client.chat.completions.create(
-                model=GROQ_POLICE_MODEL,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.2,
-            )
+            payload = await asyncio.to_thread(chain.batch, payloads)
         except Exception as exc:
             if self._is_rate_limited_error(exc):
                 logger.warning(
@@ -289,11 +297,6 @@ class PoliceAgent:
                 ) from exc
             raise
 
-        raw_text = (response.choices[0].message.content or "").strip()
-        cleaned = self._strip_markdown_fences(raw_text)
-        payload = json.loads(cleaned)
-        if isinstance(payload, dict):
-            payload = payload.get("decisions")
         if not isinstance(payload, list):
             raise ValueError("Groq police response did not produce a JSON array.")
         if len(payload) != len(transactions):
@@ -313,6 +316,22 @@ class PoliceAgent:
             decisions.append(DefenderDecision.model_validate(decision_payload))
 
         return decisions
+
+    def _build_groq_chain(self):
+        return (
+            ChatPromptTemplate.from_messages(
+                [
+                    ("system", POLICE_SYSTEM_PROMPT),
+                    ("human", "{transaction_details}"),
+                ]
+            )
+            | ChatGroq(
+                model=GROQ_POLICE_MODEL,
+                api_key=GROQ_API_KEY,
+                temperature=0.2,
+            )
+            | JsonOutputParser()
+        )
 
     def _assess_risk(
         self,

@@ -11,6 +11,8 @@ Three Personas:
   3. "The Botnet"         — High-volume, automated, distributed
 """
 
+from langchain_core.prompts import ChatPromptTemplate
+
 # ---------------------------------------------------------------------------
 # Attacker Persona System Prompts
 # ---------------------------------------------------------------------------
@@ -86,6 +88,39 @@ that got you caught, while exploiting the patterns you successfully snuck throug
 
 Return ONLY a JSON array. No markdown.
 """
+
+# ---------------------------------------------------------------------------
+# LangChain ChatPromptTemplate Objects
+# ---------------------------------------------------------------------------
+
+STRATEGIZE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", "{system_prompt}"),
+        (
+            "human",
+            "Known defender rules: {known_defender_rules}\n"
+            "Caught IDs: {caught_ids}\n"
+            "Target persona: {persona_description}\n"
+            "Previous attack history:\n{previous_attacks_summary}\n"
+            "Defender sensitivity pattern: {inferred_pattern}\n"
+            "What is your attack strategy?",
+        ),
+    ]
+)
+
+ATTACK_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", "{system_prompt}"),
+        ("human", ATTACK_GENERATION_PROMPT),
+    ]
+)
+
+ADAPT_ATTACK_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", "{system_prompt}"),
+        ("human", ADAPT_PROMPT),
+    ]
+)
 
 # ---------------------------------------------------------------------------
 # Transaction schema (provided to LLM for structured output)

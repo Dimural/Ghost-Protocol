@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 
 import pytest
+from langchain_core.messages import AIMessage
 
 import backend.agents.criminal_agent as criminal_module
 import backend.agents.police_agent as police_module
@@ -59,28 +60,46 @@ def isolate_report_state(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_criminal_agent_uses_structured_groq_client(monkeypatch):
     target_persona = load_personas()[0]
+    seen_phases: list[str] = []
 
-    async def fake_create(**kwargs):
-        assert kwargs["model"] == criminal_module.GROQ_ATTACK_MODEL
-        assert kwargs["messages"][0]["role"] == "system"
-        return _FakeGroqResponse(
-            [
-                {
-                    "amount": 87.45,
-                    "currency": "CAD",
-                    "merchant": "Cafe Pulse",
-                    "category": "restaurants",
-                    "location_city": target_persona.city,
-                    "location_country": target_persona.country,
-                    "transaction_type": TransactionType.PURCHASE.value,
-                    "fraud_type": "account_takeover",
-                    "notes": "Structured Groq attack.",
-                }
-            ]
-        )
+    class FakeChatGroq:
+        def __init__(self, *args, **kwargs):
+            assert kwargs["model"] == criminal_module.GROQ_ATTACK_MODEL
+
+        async def ainvoke(self, messages):
+            assert messages[0][0] == "system"
+            prompt = messages[-1][1]
+            if "Perceive phase" in prompt:
+                seen_phases.append("Perceive")
+                return AIMessage(content=json.dumps({"inferred_pattern": "foreign locations and large transfers"}))
+            if "Strategize phase" in prompt:
+                seen_phases.append("Strategize")
+                return AIMessage(content=json.dumps({"strategy": "Blend into domestic restaurant purchases with moderate amounts."}))
+            if "Evaluate phase" in prompt:
+                seen_phases.append("Evaluate")
+                return AIMessage(content=json.dumps({"quality_score": 0.93, "acceptable": True, "feedback": "Ready to submit."}))
+
+            seen_phases.append("Attack")
+            return AIMessage(
+                content=json.dumps(
+                    [
+                        {
+                            "amount": 87.45,
+                            "currency": "CAD",
+                            "merchant": "Cafe Pulse",
+                            "category": "restaurants",
+                            "location_city": target_persona.city,
+                            "location_country": target_persona.country,
+                            "transaction_type": TransactionType.PURCHASE.value,
+                            "fraud_type": "account_takeover",
+                            "notes": "Structured Groq attack.",
+                        }
+                    ]
+                )
+            )
 
     monkeypatch.setattr(criminal_module, "USE_MOCK_LLM", False)
-    monkeypatch.setattr("groq.AsyncGroq", _fake_async_groq_factory(fake_create))
+    monkeypatch.setattr(criminal_module, "ChatGroq", FakeChatGroq)
 
     agent = CriminalAgent(persona="patient")
     attacks = await agent.generate_attacks(
@@ -96,15 +115,17 @@ async def test_criminal_agent_uses_structured_groq_client(monkeypatch):
     assert agent.last_strategy_notes == (
         f"Patient attacker generated 1 Groq-backed attacks for {target_persona.name}."
     )
+    assert seen_phases == ["Perceive", "Strategize", "Attack", "Evaluate"]
 
 
 @pytest.mark.asyncio
 async def test_police_agent_uses_structured_groq_batch(monkeypatch):
-    async def fake_create(**kwargs):
-        assert kwargs["model"] == police_module.GROQ_POLICE_MODEL
-        assert kwargs["messages"][0]["role"] == "system"
-        return _FakeGroqResponse(
-            [
+    class FakeChain:
+        def batch(self, payloads):
+            assert len(payloads) == 2
+            assert '"transaction_id": "txn-live-police"' in payloads[0]["transaction_details"]
+            assert '"transaction_id": "txn-live-police-2"' in payloads[1]["transaction_details"]
+            return [
                 {
                     "decision": "deny",
                     "confidence": 0.92,
@@ -116,10 +137,9 @@ async def test_police_agent_uses_structured_groq_batch(monkeypatch):
                     "reason": "Matches the user's normal baseline.",
                 },
             ]
-        )
 
     monkeypatch.setattr(police_module, "USE_MOCK_LLM", False)
-    monkeypatch.setattr("groq.AsyncGroq", _fake_async_groq_factory(fake_create))
+    monkeypatch.setattr(PoliceAgent, "_build_groq_chain", lambda self: FakeChain())
 
     agent = PoliceAgent()
     suspicious = Transaction(

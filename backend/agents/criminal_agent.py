@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import operator
 import random
 import re
 import uuid
@@ -18,7 +19,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import median
-from typing import Any, Iterable
+from typing import Annotated, Any, Iterable, TypedDict
+
+from langchain_groq import ChatGroq
+from langgraph.graph import END, StateGraph
 
 from backend.agents.criminal_prompts import (
     ADAPT_PROMPT,
@@ -111,6 +115,27 @@ class DefenderRuleHints:
     avoids_luxury: bool = False
 
 
+class CriminalAgentState(TypedDict):
+    target_persona: dict[str, Any]
+    known_defender_rules: Annotated[list[str], operator.add]
+    caught_ids: Annotated[list[str], operator.add]
+    previous_attacks: Annotated[list[dict[str, Any]], operator.add]
+    inferred_pattern: str
+    strategy: str
+    attacks: list[dict[str, Any]]
+    retry_count: int
+    round_number: int
+    desired_count: int
+    should_retry: bool
+
+
+class _UnusedSyncGroqClient:
+    """Prevents ChatGroq from constructing an unused sync Groq client in async-only flows."""
+
+    def create(self, *args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("CriminalAgent LangGraph should only use async ChatGroq invocations.")
+
+
 class CriminalAgent:
     """Generate and adapt fraudulent transactions for a chosen attacker persona."""
 
@@ -125,6 +150,7 @@ class CriminalAgent:
         self.last_adaptation_reasoning: str = ""
         self.last_runtime_mode: str = "mock" if USE_MOCK_LLM else "groq"
         self._seed_transactions_cache: list[Transaction] | None = None
+        self._attack_graph = None
 
     async def generate_attacks(
         self,
@@ -597,20 +623,222 @@ class CriminalAgent:
 
         return attacks
 
+    def _get_attack_graph(self):
+        if self._attack_graph is None:
+            self._attack_graph = self._build_attack_graph()
+        return self._attack_graph
+
+    def _build_attack_graph(self):
+        graph = StateGraph(CriminalAgentState)
+        graph.add_node("Perceive", self._perceive_node)
+        graph.add_node("Strategize", self._strategize_node)
+        graph.add_node("Attack", self._attack_node)
+        graph.add_node("Evaluate", self._evaluate_node)
+        graph.set_entry_point("Perceive")
+        graph.add_edge("Perceive", "Strategize")
+        graph.add_edge("Strategize", "Attack")
+        graph.add_edge("Attack", "Evaluate")
+        graph.add_conditional_edges(
+            "Evaluate",
+            self._route_after_evaluate,
+            {
+                "retry": "Attack",
+                "end": END,
+            },
+        )
+        return graph.compile(name=f"{self.persona}-criminal-agent")
+
+    def _route_after_evaluate(self, state: CriminalAgentState) -> str:
+        return "retry" if state.get("should_retry") else "end"
+
+    def _build_generation_state(
+        self,
+        persona: Persona,
+        known_defender_rules: list[str],
+        count: int,
+    ) -> CriminalAgentState:
+        return {
+            "target_persona": persona.model_dump(mode="json"),
+            "known_defender_rules": list(known_defender_rules),
+            "caught_ids": [],
+            "previous_attacks": [],
+            "inferred_pattern": "",
+            "strategy": "",
+            "attacks": [],
+            "retry_count": 0,
+            "round_number": 1,
+            "desired_count": count,
+            "should_retry": False,
+        }
+
+    def _build_adaptation_state(
+        self,
+        persona: Persona,
+        previous_attacks: list[Transaction],
+        caught_ids: set[str],
+        count: int,
+    ) -> CriminalAgentState:
+        return {
+            "target_persona": persona.model_dump(mode="json"),
+            "known_defender_rules": [],
+            "caught_ids": sorted(caught_ids),
+            "previous_attacks": [tx.model_dump(mode="json") for tx in previous_attacks],
+            "inferred_pattern": "",
+            "strategy": "",
+            "attacks": [],
+            "retry_count": 0,
+            "round_number": 2,
+            "desired_count": count,
+            "should_retry": False,
+        }
+
+    async def _perceive_node(self, state: CriminalAgentState) -> dict[str, Any]:
+        persona = Persona.model_validate(state["target_persona"])
+        previous_attacks = self._coerce_transactions(state["previous_attacks"])
+        fallback_pattern = self._heuristic_inferred_pattern(
+            persona,
+            previous_attacks,
+            set(state["caught_ids"]),
+            state["known_defender_rules"],
+        )
+        payload = await self._invoke_graph_json(
+            "Perceive",
+            (
+                "You are in the Perceive phase of a criminal attack planning graph.\n"
+                f"Round number: {state['round_number']}\n\n"
+                f"Target persona:\n{self._format_persona_description(persona)}\n\n"
+                f"Known defender rules:\n{self._format_rules_for_prompt(state['known_defender_rules'])}\n\n"
+                f"Caught transaction IDs:\n{self._format_ids_for_prompt(state['caught_ids'])}\n\n"
+                f"Previous attack history:\n{self._format_transactions_for_prompt(previous_attacks)}\n\n"
+                "Infer what pattern the defender is most sensitive to. If evidence is sparse, describe the "
+                "baseline behavior the attacker should mimic.\n"
+                'Return JSON only: {"inferred_pattern": "one concise sentence"}'
+            ),
+            temperature=0.2,
+        )
+        inferred_pattern = str(payload.get("inferred_pattern") or fallback_pattern).strip()
+        return {"inferred_pattern": inferred_pattern or fallback_pattern}
+
+    async def _strategize_node(self, state: CriminalAgentState) -> dict[str, Any]:
+        persona = Persona.model_validate(state["target_persona"])
+        previous_attacks = self._coerce_transactions(state["previous_attacks"])
+        fallback_strategy = self._heuristic_strategy(
+            persona,
+            state["inferred_pattern"],
+            state["known_defender_rules"],
+        )
+        payload = await self._invoke_graph_json(
+            "Strategize",
+            (
+                "You are in the Strategize phase of a criminal attack planning graph.\n"
+                f"Target persona:\n{self._format_persona_description(persona)}\n\n"
+                f"Known defender rules:\n{self._format_rules_for_prompt(state['known_defender_rules'])}\n\n"
+                f"Caught transaction IDs:\n{self._format_ids_for_prompt(state['caught_ids'])}\n\n"
+                f"Previous attack history:\n{self._format_transactions_for_prompt(previous_attacks)}\n\n"
+                f"Defender sensitivity pattern:\n{state['inferred_pattern'] or fallback_strategy}\n\n"
+                "Choose an attack approach that maximizes extraction while blending into the target's normal "
+                "behavior and avoiding the defender's apparent sensitivities.\n"
+                'Return JSON only: {"strategy": "one concise tactical plan"}'
+            ),
+            temperature=0.35,
+        )
+        strategy = str(payload.get("strategy") or fallback_strategy).strip()
+        return {"strategy": strategy or fallback_strategy}
+
+    async def _attack_node(self, state: CriminalAgentState) -> dict[str, Any]:
+        persona = Persona.model_validate(state["target_persona"])
+        previous_attacks = self._coerce_transactions(state["previous_attacks"])
+        known_rules_text = self._format_rules_for_prompt(state["known_defender_rules"])
+
+        if previous_attacks:
+            prompt = ADAPT_PROMPT.format(
+                previous_attacks_summary=self._format_transactions_for_prompt(previous_attacks),
+                caught_ids=state["caught_ids"],
+                missed_ids=[tx.id for tx in previous_attacks if tx.id not in set(state["caught_ids"])],
+                inferred_pattern=state["inferred_pattern"],
+                count=state["desired_count"],
+            )
+            prompt = (
+                f"{prompt}\n\n"
+                f"Target account belongs to: {self._format_persona_description(persona)}\n"
+                f"Known defender rules:\n{known_rules_text}\n"
+                f"Chosen strategy: {state['strategy']}\n"
+                f"Use this transaction schema:\n{TRANSACTION_SCHEMA}\n"
+                "Return ONLY a JSON array of transactions."
+            )
+        else:
+            prompt = ATTACK_GENERATION_PROMPT.format(
+                known_rules=known_rules_text,
+                persona_description=self._format_persona_description(persona),
+                count=state["desired_count"],
+                transaction_schema=TRANSACTION_SCHEMA,
+            )
+            prompt = (
+                f"{prompt}\n\n"
+                f"Defender sensitivity pattern: {state['inferred_pattern']}\n"
+                f"Chosen strategy: {state['strategy']}\n"
+                f"Retry count so far: {state['retry_count']}\n"
+                "Return ONLY the JSON array."
+            )
+
+        payload = await self._invoke_graph_json("Attack", prompt, temperature=0.65)
+        if isinstance(payload, dict):
+            payload = payload.get("attacks") or payload.get("transactions") or []
+        if not isinstance(payload, list):
+            raise ValueError("Attack node did not return a JSON array of transactions.")
+        return {"attacks": payload}
+
+    async def _evaluate_node(self, state: CriminalAgentState) -> dict[str, Any]:
+        persona = Persona.model_validate(state["target_persona"])
+        payload = await self._invoke_graph_json(
+            "Evaluate",
+            (
+                "You are in the Evaluate phase of a criminal attack planning graph.\n"
+                f"Target persona:\n{self._format_persona_description(persona)}\n\n"
+                f"Known defender rules:\n{self._format_rules_for_prompt(state['known_defender_rules'])}\n\n"
+                f"Defender sensitivity pattern:\n{state['inferred_pattern']}\n\n"
+                f"Current strategy:\n{state['strategy']}\n\n"
+                f"Generated attacks:\n{self._format_transactions_for_prompt(state['attacks'])}\n\n"
+                "Score whether these attacks are realistic, schema-compliant, and likely to evade the defender. "
+                "If they are weak, explain the single most important correction.\n"
+                'Return JSON only: {"quality_score": 0.0, "acceptable": true, "feedback": "one concise sentence"}'
+            ),
+            temperature=0.1,
+        )
+        quality_score = self._coerce_float(payload.get("quality_score"), default=0.0)
+        acceptable = self._coerce_bool(payload.get("acceptable"))
+        if payload.get("acceptable") is None:
+            acceptable = quality_score >= 0.75
+
+        feedback = str(payload.get("feedback") or "").strip()
+        should_retry = not acceptable and state["retry_count"] < 2
+        next_strategy = state["strategy"]
+
+        if should_retry:
+            correction = feedback or "Reduce obvious anomalies and follow the target baseline more closely."
+            next_strategy = f"{state['strategy']} Refinement after self-evaluation: {correction}".strip()
+
+        return {
+            "retry_count": state["retry_count"] + 1 if should_retry else state["retry_count"],
+            "should_retry": should_retry,
+            "strategy": next_strategy,
+        }
+
     async def _generate_llm_attacks(
         self,
         persona: Persona,
         known_defender_rules: list[str],
         count: int,
     ) -> list[Transaction]:
-        prompt = ATTACK_GENERATION_PROMPT.format(
-            known_rules="\n".join(f"- {rule}" for rule in known_defender_rules) or "- No explicit rules supplied",
-            persona_description=self._format_persona_description(persona),
-            count=count,
-            transaction_schema=TRANSACTION_SCHEMA,
+        final_state = await self._get_attack_graph().ainvoke(
+            self._build_generation_state(persona, known_defender_rules, count)
         )
-        payload = await self._run_groq_prompt(self.system_prompt, prompt)
-        attacks = self._transactions_from_payload(payload, persona, count, default_fraud_type=self._default_fraud_type())
+        attacks = self._transactions_from_payload(
+            final_state.get("attacks", []),
+            persona,
+            count,
+            default_fraud_type=self._default_fraud_type(),
+        )
         self.last_strategy_notes = (
             f"{self.persona.title()} attacker generated {len(attacks)} Groq-backed attacks for {persona.name}."
         )
@@ -624,51 +852,59 @@ class CriminalAgent:
         rules: DefenderRuleHints,
         inferred_pattern: str,
     ) -> list[Transaction]:
-        previous_summary = "\n".join(
-            f"- {tx.id}: {tx.amount:.2f} {tx.currency} at {tx.merchant} ({tx.category}) in "
-            f"{tx.location_city}, {tx.location_country} [{tx.transaction_type.value}]"
-            for tx in previous_attacks
+        final_state = await self._get_attack_graph().ainvoke(
+            self._build_adaptation_state(
+                persona,
+                previous_attacks,
+                caught_ids,
+                len(previous_attacks),
+            )
         )
-        missed_ids = [tx.id for tx in previous_attacks if tx.id not in caught_ids]
-        prompt = ADAPT_PROMPT.format(
-            previous_attacks_summary=previous_summary,
-            caught_ids=sorted(caught_ids),
-            missed_ids=missed_ids,
-            inferred_pattern=inferred_pattern,
-            count=len(previous_attacks),
+        attacks = self._transactions_from_payload(
+            final_state.get("attacks", []),
+            persona,
+            len(previous_attacks),
+            default_fraud_type=self._default_fraud_type(),
         )
-        payload = await self._run_groq_prompt(self.system_prompt, prompt)
-        attacks = self._transactions_from_payload(payload, persona, len(previous_attacks), default_fraud_type=self._default_fraud_type())
+        strategy_summary = str(final_state.get("strategy") or "").strip()
+        graph_pattern = str(final_state.get("inferred_pattern") or inferred_pattern).strip() or inferred_pattern
+        self.last_strategy_notes = (
+            f"{self.persona.title()} attacker generated {len(attacks)} Groq-backed attacks for {persona.name}."
+        )
         self.last_adaptation_reasoning = (
-            f"Defender appeared sensitive to {inferred_pattern}; Groq generated a new evasive wave "
-            f"with {len(attacks)} transactions."
+            f"Defender appeared sensitive to {graph_pattern}; "
+            f"switching to {strategy_summary or 'a tighter evasive pattern'}."
         )
         return attacks
 
-    async def _run_groq_prompt(self, system_prompt: str, prompt: str) -> Any:
-        from groq import AsyncGroq
-
-        client = AsyncGroq(api_key=GROQ_API_KEY)
+    async def _invoke_graph_json(
+        self,
+        node_name: str,
+        prompt: str,
+        *,
+        temperature: float,
+    ) -> Any:
+        llm = ChatGroq(
+            model=GROQ_ATTACK_MODEL,
+            api_key=GROQ_API_KEY,
+            temperature=temperature,
+            max_retries=1,
+            client=_UnusedSyncGroqClient(),
+        )
         try:
-            response = await client.chat.completions.create(
-                model=GROQ_ATTACK_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.7,
+            response = await llm.ainvoke(
+                [
+                    ("system", self.system_prompt),
+                    ("human", prompt),
+                ]
             )
         except Exception as exc:
             if self._is_rate_limited_error(exc):
-                logger.warning(
-                    "Groq criminal prompt rate-limited; using local mock fallback."
-                )
-                raise RuntimeError("Groq criminal prompt hit a 429 rate limit.") from exc
+                logger.warning("Groq criminal %s node rate-limited; using local mock fallback.", node_name)
+                raise RuntimeError(f"Groq criminal {node_name} node hit a 429 rate limit.") from exc
             raise
 
-        raw_text = (response.choices[0].message.content or "").strip()
-        cleaned = self._strip_markdown_fences(raw_text)
-        return json.loads(cleaned)
+        return self._parse_json_response(self._coerce_message_text(response.content))
 
     def _transactions_from_payload(
         self,
@@ -716,12 +952,145 @@ class CriminalAgent:
 
         return transactions
 
+    def _coerce_transactions(self, payload: list[dict[str, Any]]) -> list[Transaction]:
+        transactions: list[Transaction] = []
+        for item in payload:
+            try:
+                transactions.append(Transaction.model_validate(item))
+            except Exception:
+                continue
+        return transactions
+
     def _format_persona_description(self, persona: Persona) -> str:
         return (
             f"{persona.name}, {persona.age}, {persona.occupation} in {persona.city}, {persona.country}. "
             f"Income: ${persona.income:.0f}/month. Typical categories: {', '.join(persona.spending_patterns)}. "
             f"Usual max transaction: ${persona.typical_max_transaction:.2f}."
         )
+
+    def _format_rules_for_prompt(self, known_defender_rules: list[str]) -> str:
+        return "\n".join(f"- {rule}" for rule in known_defender_rules) or "- No explicit rules supplied"
+
+    def _format_ids_for_prompt(self, values: list[str]) -> str:
+        return ", ".join(values) if values else "None"
+
+    def _format_transactions_for_prompt(
+        self,
+        transactions: list[Transaction] | list[dict[str, Any]],
+    ) -> str:
+        if not transactions:
+            return "None."
+
+        lines: list[str] = []
+        for item in transactions:
+            if isinstance(item, Transaction):
+                transaction = item
+            else:
+                try:
+                    transaction = Transaction.model_validate(item)
+                except Exception:
+                    continue
+
+            lines.append(
+                f"- {transaction.id}: {transaction.amount:.2f} {transaction.currency} at {transaction.merchant} "
+                f"({transaction.category}) in {transaction.location_city}, {transaction.location_country} "
+                f"[{transaction.transaction_type.value}]"
+            )
+
+        return "\n".join(lines) if lines else "None."
+
+    def _heuristic_inferred_pattern(
+        self,
+        persona: Persona,
+        previous_attacks: list[Transaction],
+        caught_ids: set[str],
+        known_defender_rules: list[str],
+    ) -> str:
+        if previous_attacks:
+            _, inferred_pattern = self._infer_hints_from_caught(persona, previous_attacks, caught_ids)
+            return inferred_pattern
+
+        hints = self._infer_rule_hints(known_defender_rules)
+        sensitivities: list[str] = []
+        if hints.amount_ceiling is not None:
+            sensitivities.append(f"amounts above roughly ${hints.amount_ceiling:.2f}")
+        if hints.avoids_foreign:
+            sensitivities.append("foreign or off-pattern locations")
+        if hints.avoids_transfers:
+            sensitivities.append("transfer and withdrawal behavior")
+        if hints.avoids_night:
+            sensitivities.append("late-night activity")
+        if hints.avoids_velocity:
+            sensitivities.append("bursty transaction velocity")
+        if hints.avoids_luxury:
+            sensitivities.append("luxury or travel spending")
+
+        return ", ".join(sensitivities) or "baseline deviations in merchant, location, timing, and amount"
+
+    def _heuristic_strategy(
+        self,
+        persona: Persona,
+        inferred_pattern: str,
+        known_defender_rules: list[str],
+    ) -> str:
+        hints = self._infer_rule_hints(known_defender_rules)
+        amount_note = ""
+        if hints.amount_ceiling is not None:
+            amount_note = f" Keep amounts below about ${hints.amount_ceiling:.2f}."
+
+        if self.persona == "amateur":
+            return (
+                f"Use a few higher-value domestic purchases that stay just under the apparent thresholds and avoid "
+                f"{inferred_pattern}.{amount_note}"
+            ).strip()
+        if self.persona == "botnet":
+            return (
+                f"Distribute low-value transactions across domestic merchants and varied categories while avoiding "
+                f"{inferred_pattern}.{amount_note}"
+            ).strip()
+        return (
+            f"Shadow {persona.name}'s normal merchants, domestic locations, and slightly-above-baseline amounts "
+            f"while avoiding {inferred_pattern}.{amount_note}"
+        ).strip()
+
+    def _coerce_message_text(self, content: Any) -> str:
+        if isinstance(content, str):
+            return content.strip()
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if text:
+                        parts.append(str(text))
+                else:
+                    parts.append(str(item))
+            return "\n".join(parts).strip()
+        return str(content).strip()
+
+    def _parse_json_response(self, raw_text: str) -> Any:
+        cleaned = self._strip_markdown_fences(raw_text)
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            start = min((index for index in (cleaned.find("{"), cleaned.find("[")) if index != -1), default=-1)
+            end = max(cleaned.rfind("}"), cleaned.rfind("]"))
+            if start != -1 and end != -1 and end > start:
+                return json.loads(cleaned[start : end + 1])
+            raise
+
+    def _coerce_float(self, value: Any, *, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _coerce_bool(self, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in {"true", "yes", "1", "acceptable", "accept"}
+        return bool(value)
 
     def _default_fraud_type(self) -> str:
         if self.persona == "botnet":
