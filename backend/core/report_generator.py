@@ -17,6 +17,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 import redis
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
 from backend.config import GROQ_API_KEY, REDIS_URL, USE_MOCK_LLM
@@ -370,37 +373,43 @@ class ReportGenerator:
         blind_spots: list[BlindSpot],
         summary: dict[str, Any],
     ) -> dict[str, Any]:
-        from groq import AsyncGroq
-
-        prompt = REPORT_PROMPT.format(
-            scenario_name=match_state.scenario_name,
-            criminal_persona=match_state.criminal_persona or "unknown",
-            rounds_completed=summary["rounds_completed"],
-            f1_score=f"{summary['f1_score']:.2f}",
-            total_fraud=summary["total_fraud_transactions"],
-            caught=summary["caught"],
-            missed=summary["missed"],
-            money_defended=f"{summary['money_defended']:.2f}",
-            money_lost=f"{summary['money_lost']:.2f}",
-            blind_spots=self._format_blind_spots_for_prompt(blind_spots),
-        )
-        client = AsyncGroq(api_key=GROQ_API_KEY)
+        chain = self._build_groq_chain()
+        prompt_inputs = {
+            "scenario_name": match_state.scenario_name,
+            "criminal_persona": match_state.criminal_persona or "unknown",
+            "rounds_completed": summary["rounds_completed"],
+            "f1_score": f"{summary['f1_score']:.2f}",
+            "total_fraud": summary["total_fraud_transactions"],
+            "caught": summary["caught"],
+            "missed": summary["missed"],
+            "money_defended": f"{summary['money_defended']:.2f}",
+            "money_lost": f"{summary['money_lost']:.2f}",
+            "blind_spots": self._format_blind_spots_for_prompt(blind_spots),
+        }
         try:
-            response = await client.chat.completions.create(
-                model=GROQ_REPORT_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
+            payload = await chain.ainvoke(prompt_inputs)
         except Exception as exc:
             if self._is_rate_limited_error(exc):
                 logger.warning("Groq report generation hit a rate limit; using mock report.")
                 raise RuntimeError("Groq report generation hit a 429 rate limit.") from exc
             raise
 
-        raw_text = (response.choices[0].message.content or "").strip()
-        cleaned = self._strip_markdown_fences(raw_text)
-        payload = json.loads(cleaned)
         return self._normalize_llm_sections(payload)
+
+    def _build_groq_chain(self):
+        return (
+            ChatPromptTemplate.from_messages(
+                [
+                    ("human", REPORT_PROMPT),
+                ]
+            )
+            | ChatGroq(
+                model=GROQ_REPORT_MODEL,
+                api_key=GROQ_API_KEY,
+                temperature=0.3,
+            )
+            | JsonOutputParser()
+        )
 
     def _determine_risk_rating(self, match_state: MatchState, summary: dict[str, Any]) -> RiskRating:
         missed = summary["missed"]

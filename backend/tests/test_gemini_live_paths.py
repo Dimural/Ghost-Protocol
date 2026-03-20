@@ -225,10 +225,12 @@ async def test_report_generator_uses_structured_groq_client(monkeypatch):
         )
     )
 
-    async def fake_create(**kwargs):
-        assert kwargs["model"] == report_module.GROQ_REPORT_MODEL
-        return _FakeGroqResponse(
-            {
+    class FakeChain:
+        async def ainvoke(self, payload):
+            assert payload["scenario_name"] == "Groq Report"
+            assert payload["criminal_persona"] == "patient"
+            assert payload["total_fraud"] == 1
+            return {
                 "executive_summary": "The defender missed a high-risk transfer during the simulation.",
                 "critical_vulnerabilities": ["Large transfer anomalies were not denied."],
                 "attack_pattern_analysis": "The attacker used a single high-value transfer to test approval boundaries.",
@@ -243,10 +245,9 @@ async def test_report_generator_uses_structured_groq_client(monkeypatch):
                 ],
                 "risk_rating": "HIGH",
             }
-        )
 
     monkeypatch.setattr(report_module, "USE_MOCK_LLM", False)
-    monkeypatch.setattr("groq.AsyncGroq", _fake_async_groq_factory(fake_create))
+    monkeypatch.setattr(report_module.ReportGenerator, "_build_groq_chain", lambda self: FakeChain())
 
     report = await REPORT_GENERATOR.generate_for_match("live-report-match", force=True)
 

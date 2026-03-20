@@ -321,7 +321,7 @@ class PoliceAgent:
         return (
             ChatPromptTemplate.from_messages(
                 [
-                    ("system", POLICE_SYSTEM_PROMPT),
+                    ("system", self._escape_prompt_template_braces(POLICE_SYSTEM_PROMPT)),
                     ("human", "{transaction_details}"),
                 ]
             )
@@ -332,6 +332,9 @@ class PoliceAgent:
             )
             | JsonOutputParser()
         )
+
+    def _escape_prompt_template_braces(self, value: str) -> str:
+        return value.replace("{", "{{").replace("}", "}}")
 
     def _assess_risk(
         self,
