@@ -219,7 +219,7 @@ flowchart TD
 
 ### Criminal Agent State Graph
 
-The attacker is no longer a single prompt call. It is a graph-based workflow with explicit reasoning stages.
+The attacker is a graph-based workflow with explicit reasoning stages.
 
 ```mermaid
 flowchart LR
@@ -257,7 +257,7 @@ What each node does:
 
 ### Police AI LangChain Pipeline
 
-The built-in defender now uses a structured LangChain batch pipeline instead of a raw SDK call.
+The built-in defender uses a structured LangChain batch pipeline instead of a raw SDK call.
 
 ```mermaid
 flowchart LR
@@ -668,10 +668,6 @@ This repository already includes:
 - reporting
 - scenario cloning
 - shareable match URLs
-
-The detailed implementation plan and session history live in:
-
-- [GHOST_PROTOCOL_PRD.md](/Users/dimural/Ghost-Protocol/GHOST_PROTOCOL_PRD.md)
 
 ---
 
