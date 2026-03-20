@@ -28,11 +28,11 @@ It is the environment used to test fraud detectors under pressure.
 
 The product creates a controlled “Ghost World” where:
 
-- a **Criminal Agent** generates or adapts fraud attacks
+- a **Criminal Agent** uses a **LangGraph** state machine to generate or adapt fraud attacks
 - a **Defender** is either your own fraud API or the built-in **Police AI**
 - a **Referee** compares decisions against hidden ground truth
 - a live **War Room** visualizes the match as it unfolds
-- a post-game **Report** explains what failed, what held, and what to fix next
+- a post-game **Report** uses a **LangChain** pipeline to explain what failed, what held, and what to fix next
 
 This makes Ghost Protocol closer to a flight simulator for fraud teams than a conventional rules engine.
 
@@ -112,13 +112,17 @@ Ghost Protocol exists to answer a harder question:
 ### Criminal Agent
 
 - persona-driven fraud generation
+- LangGraph-backed attack planning workflow
+- explicit state-machine loop: `Perceive -> Strategize -> Attack -> Evaluate`
+- self-evaluation with up to 2 retries before submission
 - multi-round attack sequencing
 - adaptation behavior between rounds
-- Groq-backed runtime with mock fallback when no key is present
+- Groq-backed `ChatGroq` runtime with silent mock fallback when no key is present or a live call fails
 
 ### Defender Layer
 
 - built-in Police AI
+- LangChain batch evaluation pipeline with `ChatPromptTemplate -> ChatGroq -> JsonOutputParser`
 - custom webhook integration for external fraud APIs
 - webhook registration, probing, and error logging
 - sample webhook endpoint included for local testing
@@ -142,6 +146,7 @@ Ghost Protocol exists to answer a harder question:
 ### Reporting
 
 - report generation per completed match
+- LangChain report pipeline with structured JSON parsing
 - JSON export
 - PDF export
 - recommendations and security-gap summaries
@@ -157,8 +162,11 @@ Ghost Protocol exists to answer a harder question:
 - WebSockets
 - Pydantic
 - HTTPX
+- LangGraph
+- LangChain
+- langchain-groq
 - Redis with JSON fallback
-- Groq SDK
+- Groq API
 
 ### Frontend
 
@@ -181,25 +189,164 @@ Ghost Protocol exists to answer a harder question:
 
 ```mermaid
 flowchart TD
-  A["Next.js Frontend"] --> B["FastAPI Backend"]
-  B --> C["Match State Store"]
-  B --> D["Criminal Agent"]
-  B --> E["Police AI / Webhook Dispatcher"]
-  B --> F["Referee Engine"]
-  F --> G["WebSocket Event Stream"]
-  F --> H["Report Generator"]
-  C --> I["Redis"]
-  C --> J["JSON Fallback"]
+  UI["Next.js Frontend<br/>War Room / Replay / Report"] --> API["FastAPI Backend"]
+  API --> ROUTES["Match / Defender / Report / WebSocket Routes"]
+  ROUTES --> ORCH["Match Orchestrator"]
+  ROUTES --> STORE["Canonical Match State Store"]
+  ORCH --> CRIM["Criminal Agent<br/>LangGraph state machine"]
+  ORCH --> DEF["Defender Layer"]
+  DEF --> POLICE["Police AI<br/>LangChain chain"]
+  DEF --> WEBHOOK["Custom Defender Webhook"]
+  ORCH --> REF["Referee Engine"]
+  REF --> WS["WebSocket Event Stream"]
+  ORCH --> REPORT["Report Generator<br/>LangChain chain"]
+  STORE --> REDIS["Redis"]
+  STORE --> JSON["JSON fallback file"]
+  WS --> UI
+  REPORT --> STORE
+  STORE --> UI
 ```
 
 ### Runtime Model
 
 - **Frontend** drives setup, live monitoring, replay, and reporting.
 - **Backend** owns the match lifecycle and canonical state.
-- **Criminal Agent** produces attacks.
-- **Defender** responds through either Police AI or a user webhook.
+- **Criminal Agent** is a LangGraph workflow that produces attacks.
+- **Defender** responds through either a LangChain-based Police AI or a user webhook.
 - **Referee** scores each transaction against ground truth.
 - **WebSocket stream** keeps the War Room live.
+- **Report Generator** uses a LangChain structured-output pipeline over the completed match.
+
+### Criminal Agent State Graph
+
+The attacker is no longer a single prompt call. It is a graph-based workflow with explicit reasoning stages.
+
+```mermaid
+flowchart LR
+  START["START"] --> P["Perceive"]
+  P --> S["Strategize"]
+  S --> A["Attack"]
+  A --> E["Evaluate"]
+  E -- "quality low and retry_count < 2" --> A
+  E -- "acceptable or retries exhausted" --> END["END"]
+```
+
+#### Criminal Agent State
+
+```python
+class CriminalAgentState(TypedDict):
+    target_persona: dict[str, Any]
+    known_defender_rules: list[str]
+    caught_ids: list[str]
+    previous_attacks: list[dict[str, Any]]
+    inferred_pattern: str
+    strategy: str
+    attacks: list[dict[str, Any]]
+    retry_count: int
+    round_number: int
+    desired_count: int
+    should_retry: bool
+```
+
+What each node does:
+
+- `Perceive` reads the target persona, defender rules, caught IDs, and prior attack history to infer what the defender is sensitive to.
+- `Strategize` chooses the attack approach for the current round.
+- `Attack` generates the actual fraudulent transactions.
+- `Evaluate` scores the current attack batch and either retries or exits the graph.
+
+### Police AI LangChain Pipeline
+
+The built-in defender now uses a structured LangChain batch pipeline instead of a raw SDK call.
+
+```mermaid
+flowchart LR
+  TX["Transaction context<br/>transaction + recent history + user baseline + backend heuristics"] --> PROMPT["ChatPromptTemplate"]
+  PROMPT --> LLM["ChatGroq<br/>llama-3.1-8b-instant"]
+  LLM --> PARSER["JsonOutputParser"]
+  PARSER --> GUARDS["Decision guardrails<br/>backend overrides + confidence normalization"]
+  GUARDS --> OUT["DefenderDecision"]
+```
+
+Important runtime behavior:
+
+- `evaluate_batch()` builds one structured payload per transaction.
+- `chain.batch()` evaluates the whole batch while preserving input order.
+- the backend still applies rule-based guardrails after model output
+- if the live call fails or is rate-limited, the system falls back to the local heuristic defender instead of breaking the match
+
+### Report Generation Pipeline
+
+The post-game report also runs as a structured LangChain pipeline.
+
+```mermaid
+flowchart LR
+  MATCH["Completed match<br/>transactions + defender decisions + blind spots + score"] --> RPROMPT["ChatPromptTemplate"]
+  RPROMPT --> RLLM["ChatGroq<br/>llama-3.3-70b-versatile"]
+  RLLM --> RPARSER["JsonOutputParser"]
+  RPARSER --> NORMALIZE["Normalize sections<br/>risk rating + recommendations"]
+  NORMALIZE --> REPORTOUT["Persisted MatchReport"]
+```
+
+### End-to-End Match Flow
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Frontend
+  participant API as FastAPI Backend
+  participant Orchestrator
+  participant Criminal as Criminal Agent (LangGraph)
+  participant Defender as Police AI / Webhook
+  participant Referee
+  participant WS as WebSocket
+  participant Report
+
+  User->>Frontend: Configure scenario + defender
+  Frontend->>API: POST /api/match/create
+  Frontend->>API: POST /api/defender/register
+  Frontend->>API: POST /api/match/{id}/start
+  API->>Orchestrator: run_match(match_id)
+
+  loop each round
+    alt first round
+      Orchestrator->>Criminal: generate_attacks()
+    else later round
+      Orchestrator->>Criminal: adapt()
+    end
+    Criminal-->>Orchestrator: fraud transactions
+    Orchestrator->>Defender: evaluate_batch()
+    Defender-->>Orchestrator: APPROVE / DENY decisions
+    Orchestrator->>Referee: score each transaction
+    Referee-->>WS: TRANSACTION_PROCESSED
+    alt more rounds remain
+      Orchestrator-->>WS: ATTACKER_ADAPTING
+    end
+  end
+
+  Orchestrator->>Report: generate completed report
+  Report-->>API: MatchReport
+  API-->>WS: MATCH_COMPLETE
+  Frontend->>API: GET /api/report/{match_id}
+```
+
+### Fallback Flow
+
+Ghost Protocol is designed to stay alive even when live model calls do not.
+
+```mermaid
+flowchart LR
+  CHECK["GROQ_API_KEY present?"] -- "No" --> MOCK["Use mock criminal logic,<br/>heuristic Police AI,<br/>and deterministic report generation"]
+  CHECK -- "Yes" --> LIVE["Use LangGraph / LangChain live path"]
+  LIVE -- "Success" --> OK["Continue live simulation"]
+  LIVE -- "Rate limit / API error / parse failure" --> MOCK
+```
+
+This fallback behavior is intentional:
+
+- missing `GROQ_API_KEY` keeps the full stack runnable offline
+- LangGraph and LangChain failures do not crash the match
+- the simulation continues using mock or heuristic paths so the War Room and report still complete
 
 ---
 
@@ -275,7 +422,7 @@ cd ..
 ### 5. Run the backend
 
 ```bash
-uvicorn backend.main:app --reload
+.venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
 Backend defaults to:
@@ -301,7 +448,7 @@ Frontend defaults to:
 
 | Variable | Required | Purpose |
 |---|---:|---|
-| `GROQ_API_KEY` | No | Enables live Groq-backed AI behavior |
+| `GROQ_API_KEY` | No | Enables live LangGraph / LangChain Groq behavior |
 | `GEMINI_API_KEY` | No | Legacy compatibility only |
 | `GOOGLE_API_KEY` | No | Legacy compatibility only |
 | `REDIS_URL` | No | Optional match-state store |
@@ -321,13 +468,13 @@ Set `GROQ_API_KEY` in `.env`.
 
 This enables Groq-backed behavior for:
 
-- Criminal Agent
-- Police AI evaluation
-- report generation
+- Criminal Agent LangGraph execution
+- Police AI LangChain evaluation
+- report generation chain
 
 ### Mock Mode
 
-If `GROQ_API_KEY` is not set, the system still runs end to end using mock logic.
+If `GROQ_API_KEY` is not set, or if a live model call fails, the system still runs end to end using mock or heuristic fallback logic.
 
 This is useful for:
 
@@ -514,8 +661,9 @@ http://127.0.0.1:8000/api/defender/sample-webhook
 This repository already includes:
 
 - the live simulation loop
-- Groq integration
-- batch Police AI evaluation
+- LangGraph Criminal Agent orchestration
+- LangChain-based Police AI and report pipelines
+- Groq-backed live runtime with fallback behavior
 - replay mode
 - reporting
 - scenario cloning
